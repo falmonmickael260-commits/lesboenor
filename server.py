@@ -1,3 +1,4 @@
+import threading, time
 import hmac, json, os, re, sqlite3, unicodedata
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -89,6 +90,12 @@ def act(s,a):
     else: raise ValueError()
     return s
 
+room_pin = os.getenv("ROOM_PIN", "")
+room_until = int(os.getenv("ROOM_UNTIL", "0"))
+pin_lock = threading.Lock()
+with sqlite3.connect(db) as c:
+    c.execute("CREATE TABLE IF NOT EXISTS pin_attempts (at REAL)")
+
 class Handler(BaseHTTPRequestHandler):
     def send(self,status,data,kind="application/json"):
         if kind=="application/json": data=json.dumps(data).encode()
@@ -99,7 +106,17 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
     def authorized(self):
-        return hmac.compare_digest(self.headers.get("Authorization","").encode(),("Bearer "+secret).encode())
+        header = self.headers.get("Authorization", "")
+        if hmac.compare_digest(header.encode(), ("Bearer "+secret).encode()): return True
+        if not re.fullmatch(r"Bearer [0-9]{4}", header) or not re.fullmatch(r"[0-9]{4}", room_pin): return False
+        if time.time() >= room_until: return False
+        with pin_lock, sqlite3.connect(db) as c:
+            now = time.time()
+            c.execute("DELETE FROM pin_attempts WHERE at < ?", (now-900,))
+            if c.execute("SELECT COUNT(*) FROM pin_attempts").fetchone()[0] >= 5: return False
+            if hmac.compare_digest(header[7:], room_pin): return True
+            c.execute("INSERT INTO pin_attempts VALUES (?)", (now,))
+            return False
     def do_GET(self):
         files={"/":("index.html","text/html; charset=utf-8"),"/app.js":("app.js","text/javascript"),"/style.css":("style.css","text/css")}
         if self.path in files:
