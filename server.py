@@ -138,8 +138,6 @@ def final_action(s,a):
             rows.append(dict(question=question,source=source,answers=results))
         f.update(total=total,rows=rows)
         s["phase"]="verdict"
-    elif op=="restart" and s["phase"]=="verdict":
-        return draw_duel({**fresh(s.get("remaining",list(range(6,len(six_boards))))),"rosters":s.get("rosters",[[],[]]),"captains":s.get("captains",[None,None])})
     else: raise ValueError()
     return s
 
@@ -194,6 +192,8 @@ def resolve_buzz(s,points):
     s["msg"]+=" · Les "+teams[winner]+" prennent la main."
 
 def act(s,a):
+    if a.get("op")=="restart":
+        return draw_duel({**fresh(s.get("remaining",list(range(6,len(six_boards))))),"rosters":s.get("rosters",[[],[]]),"captains":s.get("captains",[None,None])})
     phase=s["phase"]
     op=a.get("op")
     if phase in ("qualify","private","verdict"): return final_action(s,a)
