@@ -27,3 +27,11 @@ main{max-width:990px}header b{font-size:14px;letter-spacing:.19em}header em{disp
 #regular,#finale,.slot,.scores article{min-width:0}.slot span{overflow-wrap:anywhere}
 @media(min-width:760px){#rosterForm>.groups{gap:22px}#regular{padding:32px 40px}#entry label{font-size:18px}.scores article{padding:15px}}
 @media(max-width:600px){.groups{grid-template-columns:minmax(0,1fr)}.teamForm{padding:10px}#players{padding:14px}#duel{display:block;padding:14px 18px}#duel small{max-width:none}#duel h2{margin-top:4px;font-size:21px}#rosterForm>button,#entry button{min-height:44px}#rosterForm>button{width:100%}footer{flex-wrap:wrap}#regular,#finale{padding:16px}input{font-size:16px}}
+
+/* Modes de jeu 6v6, 7v7 et 8v8 */
+.formatPicker{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 14px;margin:10px 0;border:1px solid #65769a;border-radius:12px;background:#101d36}
+.formatPicker label{margin:0;color:#ffe0a0}
+.formatPicker select{flex:1;min-width:220px;max-width:380px;background:#0b1222;color:#fff;border:1px solid #8a9dbe;border-radius:9px;padding:12px;font:inherit}
+#formatHint{font-size:14px;color:#cbd8ee;margin:0 0 14px}
+.formatSummary{margin:0 0 12px;text-align:center;color:#ffdf9a;font-size:14px;font-weight:750;letter-spacing:.025em}
+@media(max-width:600px){.formatPicker{align-items:stretch}.formatPicker select{min-width:0;max-width:none;width:100%}}
