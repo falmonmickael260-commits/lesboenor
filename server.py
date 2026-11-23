@@ -192,6 +192,8 @@ def resolve_buzz(s,points):
     s["msg"]+=" · Les "+teams[winner]+" prennent la main."
 
 def act(s,a):
+    if a.get("op")=="restart_new_players":
+        return draw_duel({**fresh(s.get("remaining")), "rosters":[[],[]], "captains":[None,None]})
     if a.get("op")=="restart":
         return draw_duel({**fresh(s.get("remaining",list(range(6,len(six_boards))))),"rosters":s.get("rosters",[[],[]]),"captains":s.get("captains",[None,None])})
     phase=s["phase"]
