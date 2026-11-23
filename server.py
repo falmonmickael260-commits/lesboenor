@@ -160,7 +160,7 @@ def public(s,rev):
     slots=[]
     for i,(label,pts,_) in enumerate(q["rows"]):
         rank=1+sum(p>pts for _,p,_ in q["rows"])
-        slots.append(dict(rank=rank,label=label,pts=pts) if i in s["found"] else None)
+        slots.append(dict(rank=rank,label=label,pts=pts) if i in s["found"] or s["phase"]=="end" else None)
     return {**s,"rosters":rosters,"duel":duel,"slots":slots,"question":q["question"],"source":q["source"] if s["phase"]=="end" else [q["source"][0]],"rev":rev,"total":len(boards)}
 def finish(s,winner,stolen):
     s["scores"][winner]+=s["pot"]
