@@ -16,7 +16,8 @@ ROUNDS = 8
 TEAM_FORMATS = (0, 6, 7, 8)  # 0 = équipes libres (1 à 30 joueurs)
 
 def deal(deck, remaining):
-    deck, pool = list(deck), list(remaining)
+    deck = [i for i in deck if type(i) is int and 0 <= i < len(six_boards)]
+    pool = [i for i in remaining if type(i) is int and 0 <= i < len(six_boards) and i not in deck]
     while len(deck) < ROUNDS:
         if not pool:
             eligible = [i for i in range(len(six_boards)) if i not in deck]
@@ -53,6 +54,21 @@ with sqlite3.connect(db) as c:
     c.execute("INSERT OR IGNORE INTO game VALUES(1,0,?)",(json.dumps(fresh()),))
     rev,body=c.execute("SELECT rev,body FROM game WHERE id=1").fetchone()
     old=json.loads(body)
+    # Une ancienne partie peut référencer l'ancien catalogue américain.
+    # Réinitialiser la manche si ces indices n'existent plus dans les 8 enquêtes françaises.
+    if "deck" in old and (
+        not isinstance(old["deck"],list) or
+        any(type(i) is not int or i < 0 or i >= len(six_boards) for i in old["deck"])
+    ):
+        preserved_rosters=old.get("rosters",[[],[]])
+        preserved_captains=old.get("captains",[None,None])
+        preserved_size=old.get("teamSize",0)
+        old={**fresh(), "rosters":preserved_rosters,
+             "captains":preserved_captains, "teamSize":preserved_size,
+             "called":[[],[]]}
+        draw_duel(old)
+        c.execute("UPDATE game SET body=?,rev=rev+1 WHERE id=1",(json.dumps(old),))
+
     if "deck" not in old and (old.get("six") or old["phase"]=="start"):
         prefix=list(range(old["i"]+1))
         rest=list(range(len(prefix),len(six_boards)))
