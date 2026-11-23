@@ -14,7 +14,7 @@ function render(s){
   $("duel").hidden=s.phase!=="start";
   $("pair").textContent=s.duel.every(Boolean)?s.duel[0]+" (Bleus) et "+s.duel[1]+" (Rouges)":"Renseignez les prénoms dans la composition des équipes.";
   if(rosterChange){
-    s.rosters.forEach((names,i)=>$("names"+i).value=names.join("\n"));
+    s.rosters.forEach(drawNames);
     rosterBase=null;
     $("players").open=!s.duel.every(Boolean);
   }
@@ -69,10 +69,34 @@ $("share").onclick=async()=>{try{await navigator.clipboard.writeText(location.or
 $("exit").onclick=()=>{sessionStorage.removeItem("regie");location.reload()};
 bootFinal();sync();setInterval(()=>{if(!document.hidden)sync()},1000);
 
+function addName(team,value="",focus=false){
+  const list=$("list"+team), index=list.children.length+1;
+  if(index>30)return;
+  const label=document.createElement("label"), number=document.createElement("span"), input=document.createElement("input");
+  number.textContent=String(index).padStart(2,"0");input.value=value;
+  input.placeholder="Prénom ou pseudo";input.maxLength=40;input.autocomplete="off";
+  input.setAttribute("aria-label",teams[team]+" · joueur "+index);
+  input.onkeydown=e=>{
+    if(e.key!=="Enter")return;
+    e.preventDefault();
+    const next=label.nextElementSibling;
+    if(next)next.querySelector("input").focus();else if(input.value.trim())addName(team,"",true);
+  };
+  label.append(number,input);list.append(label);
+  $("add"+team).disabled=index===30;
+  if(focus)input.focus();
+}
+function drawNames(names,team){
+  $("names"+team).hidden=true;
+  $("list"+team).replaceChildren();
+  $("add"+team).hidden=false;
+  $("add"+team).onclick=()=>addName(team,"",true);
+  for(let i=0;i<Math.max(5,names.length);i++)addName(team,names[i]||"");
+}
 $("rosterForm").oninput=()=>{if(rosterBase===null)rosterBase=state.rev};
 $("rosterForm").onsubmit=e=>{
   e.preventDefault();
-  const rosters=[0,1].map(i=>$("names"+i).value.split(/\n/).map(n=>n.trim()).filter(Boolean));
+  const rosters=[0,1].map(i=>Array.from($("list"+i).querySelectorAll("input"),input=>input.value.trim()).filter(Boolean));
   if(rosters.some(group=>!group.length||group.length>30||group.some(n=>n.length>40))){
     $("notice").textContent="Indiquez entre 1 et 30 joueurs par équipe, avec 40 caractères maximum par prénom.";return;
   }
@@ -120,4 +144,5 @@ function renderFinal(s){
   $("finalName").value=draft[0]||"";$("finalPlayers").replaceChildren(...s.rosters[f.team].map(n=>new Option(n)));
   $("finalFields").replaceChildren(...f.prompts.map((q,i)=>{const label=document.createElement("label"),input=document.createElement("input");label.textContent=(i+1)+". "+q;input.required=true;input.maxLength=180;input.value=draft[i+1]||"";input.placeholder="Réponse du joueur";input.style.cssText="display:block;width:100%;margin:5px 0 14px";label.append(input);return label}));
 }
+
 
