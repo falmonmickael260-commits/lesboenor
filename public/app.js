@@ -53,13 +53,21 @@ function render(s){
   $("board").replaceChildren(...s.slots.map((v,i)=>{
     const el=document.createElement("div"),number=document.createElement("b"),label=document.createElement("span");
     el.className="slot"+(v?" hit":"");
-    number.textContent=String(i+1);label.textContent=v?v.label:"";
+    number.textContent=String(v?v.rank:i+1);label.textContent=v?v.label:"";
+    if(v && s.phase==="end"){
+      const found=s.found.includes(i),status=document.createElement("small");
+      status.style.cssText="display:block;letter-spacing:0;font-size:12px;color:inherit";
+      status.textContent=found?"✓ Trouvée":"Non trouvée";
+      label.append(status);
+      if(!found)el.className="slot";
+      if(!found)label.style.cssText="height:auto;width:auto;background:none";
+    }
     el.setAttribute("aria-label",v?v.label+" "+v.pts+" points":"Réponse "+(i+1)+" masquée");
     el.append(number,label);
     if(v){const pts=document.createElement("strong");pts.textContent=v.pts;el.append(pts)}
     return el;
   }));
-  $("instruction").textContent=s.found.length+" / "+s.slots.length+" réponses dévoilées";
+  $("instruction").textContent=(s.phase==="end"?"Classement final · ":"")+s.found.length+" / "+s.slots.length+" réponses trouvées";
   $("strikes").textContent="Erreurs "+("✕ ".repeat(s.errors))+("○ ".repeat(3-s.errors));
   for(const [id,on] of Object.entries({start:s.phase==="start",entry:["buzz","play","steal"].includes(s.phase),review:s.phase==="review",next:s.phase==="end"}))$(id).hidden=!on;
   const last=s.i===s.total-1;
