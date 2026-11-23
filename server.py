@@ -2,7 +2,7 @@ import threading, time
 import hmac, json, os, re, sqlite3, unicodedata
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from questions import boards
+from questions import boards, six_boards
 
 ROOT = Path(__file__).resolve().parent
 directory = Path(os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.getenv("DATA_DIR", ROOT/"data"))
@@ -88,6 +88,10 @@ def final_action(s,a):
     return s
 
 
+def current_board(s):
+    bank=six_boards if s.get("six") or s["phase"]=="start" else boards
+    return bank[s["i"]]
+
 def public(s,rev):
     s=s.copy()
     if 'final' in s:
@@ -97,7 +101,7 @@ def public(s,rev):
         s['final']=f
     rosters=s.get("rosters",[[],[]])
     duel=[names[s["i"]%len(names)] if names else None for names in rosters]
-    q=boards[s["i"]]
+    q=current_board(s)
     slots=[]
     for i,(label,pts,_) in enumerate(q["rows"]):
         rank=1+sum(p>pts for _,p,_ in q["rows"])
@@ -120,6 +124,7 @@ def act(s,a):
             if any(not isinstance(n,str) or not 1<=len(n.strip())<=40 for n in names): raise ValueError()
         s["rosters"]=[[n.strip() for n in names] for names in groups]
     elif op=="start" and phase=="start" and a.get("team") in (0,1):
+        s["six"]=True
         s.update(team=a["team"],phase="play",msg="Lisez la question, puis saisissez la première réponse.")
     elif op=="next" and phase=="end":
         if s["i"]==len(boards)-1:
@@ -141,7 +146,7 @@ def act(s,a):
         raw=a.get("value","")
         if not isinstance(raw,str) or not 0<len(raw.strip())<=180: raise ValueError()
         v=norm(raw)
-        rows=boards[s["i"]]["rows"]
+        rows=current_board(s)["rows"]
         matches=[i for i,(label,_,alts) in enumerate(rows) if any(close(v,norm(t)) for t in [label,*alts.split("|")])]
         if len(matches)!=1:
             s.update(previous=phase,phase="review",msg=f'« {raw.strip()} » · Aucune correspondance certaine. Précisez ou comptez une erreur.')
@@ -218,4 +223,5 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,TypeError): self.send(400,{})
 if __name__=="__main__":
     ThreadingHTTPServer(("0.0.0.0",int(os.getenv("PORT","8080"))),Handler).serve_forever()
+
 
