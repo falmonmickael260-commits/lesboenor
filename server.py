@@ -266,10 +266,15 @@ class Handler(BaseHTTPRequestHandler):
         if kind=="application/json": data=json.dumps(data).encode()
         self.send_response(status)
         self.send_header("Content-Type",kind)
+        self.send_header("Referrer-Policy","no-referrer")
         self.send_header("Cache-Control","no-store")
         self.send_header("Content-Length",str(len(data)))
         self.end_headers()
         self.wfile.write(data)
+    def log_request(self, code="-", size="-"):
+        if not self.path.startswith("/invitation/"):
+            super().log_request(code,size)
+
     def authorized(self):
         header = self.headers.get("Authorization", "")
         if hmac.compare_digest(header.encode(), ("Bearer "+secret).encode()): return True
@@ -284,6 +289,8 @@ class Handler(BaseHTTPRequestHandler):
             return False
     def do_GET(self):
         files={"/":("index.html","text/html; charset=utf-8"),"/app.js":("app.js","text/javascript"),"/style.css":("style.css","text/css")}
+        if re.fullmatch(r"/invitation/[A-Za-z0-9_-]{24,128}/?(?:\?[^ ]*)?",self.path):
+            return self.send(200,(ROOT/"public/index.html").read_bytes(),"text/html; charset=utf-8")
         if self.path in files:
             name,kind=files[self.path]
             return self.send(200,(ROOT/"public"/name).read_bytes(),kind)
