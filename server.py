@@ -13,6 +13,7 @@ secret = os.environ.get("HOST_KEY", "")
 if len(secret) < 12:
     raise SystemExit("Définissez HOST_KEY avec au moins 12 caractères.")
 ROUNDS = 8
+TEAM_FORMATS = (0, 6, 7, 8)  # 0 = équipes libres (1 à 30 joueurs)
 
 def deal(deck, remaining):
     deck, pool = list(deck), list(remaining)
@@ -28,7 +29,7 @@ def deal(deck, remaining):
 
 def fresh(remaining=None):
     deck,pool=deal([],remaining or [])
-    return dict(deck=deck,remaining=pool,i=0,team=None,phase="start",found=[],pot=0,errors=0,scores=[0,0],history=[],msg="Choisissez l’équipe qui prend la main.")
+    return dict(deck=deck,remaining=pool,i=0,team=None,phase="start",found=[],pot=0,errors=0,scores=[0,0],history=[],teamSize=0,msg="Choisissez l’équipe qui prend la main.")
 def draw_duel(s, keep=False):
     groups=s.get("rosters",[[],[]])
     history=s.setdefault("called",[[],[]])
@@ -193,25 +194,30 @@ def resolve_buzz(s,points):
 
 def act(s,a):
     if a.get("op")=="restart_new_players":
-        return draw_duel({**fresh(s.get("remaining")), "rosters":[[],[]], "captains":[None,None]})
+        return draw_duel({**fresh(s.get("remaining")), "rosters":[[],[]], "captains":[None,None], "teamSize":s.get("teamSize",0)})
     if a.get("op")=="restart":
-        return draw_duel({**fresh(s.get("remaining",list(range(6,len(six_boards))))),"rosters":s.get("rosters",[[],[]]),"captains":s.get("captains",[None,None])})
+        return draw_duel({**fresh(s.get("remaining",list(range(6,len(six_boards))))),"rosters":s.get("rosters",[[],[]]),"captains":s.get("captains",[None,None]),"teamSize":s.get("teamSize",0)})
     phase=s["phase"]
     op=a.get("op")
     if phase in ("qualify","private","verdict"): return final_action(s,a)
     if op=="rosters" and phase=="start":
         groups=a.get("rosters")
+        size=a.get("teamSize", s.get("teamSize",0))
+        if type(size) is not int or size not in TEAM_FORMATS: raise ValueError()
         if not isinstance(groups,list) or len(groups)!=2: raise ValueError()
         for names in groups:
             if not isinstance(names,list) or not 1<=len(names)<=30: raise ValueError()
+            if size and len(names)!=size: raise ValueError()
             if any(not isinstance(n,str) or not 1<=len(n.strip())<=40 for n in names): raise ValueError()
         groups=[[n.strip() for n in names] for names in groups]
         captains=a.get("captains",[g[0] for g in groups])
         if not isinstance(captains,list) or len(captains)!=2: raise ValueError()
         if any(captains[i] not in names or len(set(n.casefold() for n in names))!=len(names) for i,names in enumerate(groups)): raise ValueError()
-        s.update(rosters=groups,captains=captains)
+        s.update(rosters=groups,captains=captains,teamSize=size)
         draw_duel(s,keep=True)
     elif op=="start" and phase=="start" and a.get("team") in (0,1):
+        size=s.get("teamSize",0)
+        if size and any(len(g)!=size for g in s.get("rosters",[[],[]])): raise ValueError()
         for team,name in enumerate(s.get("pair",[])):
             if name: s["called"][team].append(name)
         s["six"]=True
