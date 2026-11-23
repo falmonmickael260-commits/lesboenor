@@ -1,5 +1,5 @@
 const inviteFromLink=new URLSearchParams(location.hash.slice(1)).get("salle");
-if(inviteFromLink){sessionStorage.setItem("roomInvite",inviteFromLink);history.replaceState(null,"",location.pathname)}
+if(inviteFromLink){sessionStorage.setItem("roomInvite",inviteFromLink)}
 const roomInvite=sessionStorage.getItem("roomInvite")||"";
 const $=id=>document.getElementById(id);
 let key=sessionStorage.getItem("regie")||"", state=null, busy=false;
@@ -42,7 +42,7 @@ async function sync(action){
   busy=true;
   try{
     const r=await fetch("/api",{method:action?"POST":"GET",headers:{Authorization:"Bearer "+key,"X-Room-Invite":roomInvite},body:action?JSON.stringify({...action,rev:action.rev??state.rev}):undefined});
-    if(r.status===401){key="";sessionStorage.removeItem("regie");state=null;$("game").hidden=true;$("login").hidden=false;throw Error("Code incorrect.")}
+    if(r.status===401){key="";sessionStorage.removeItem("regie");state=null;$("game").hidden=true;$("login").hidden=false;throw Error(!roomInvite?"Ouvrez le lien privé complet reçu de votre coanimateur, puis saisissez le code.":"Accès refusé. Vérifiez le code et le lien privé. Après cinq essais incorrects, attendez 15 minutes.")}
     if(r.status===400 && action?.op==="seal"){ $("notice").textContent="Vérifiez le prénom dans l’équipe qualifiée et choisissez deux finalistes différents. Si cette fiche est déjà scellée, ouvrez l’autre.";return}
     if(!r.ok && r.status!==409)throw Error("Connexion interrompue. Vérifiez le panneau avant de réessayer.");
     render(await r.json());sessionStorage.setItem("regie",key);
@@ -51,7 +51,7 @@ async function sync(action){
   }catch(e){$("notice").textContent=e.message;$("status").textContent="Hors connexion"}
   finally{busy=false}
 }
-$("access").onsubmit=async e=>{e.preventDefault();key=$("key").value;await sync();if(state){$("key").value="";$("notice").textContent=""}};
+$("access").onsubmit=async e=>{e.preventDefault();key=$("key").value.trim();await sync();if(state){$("key").value="";$("notice").textContent=""}};
 $("entry").onsubmit=e=>{e.preventDefault();sync({op:"answer",value:$("answer").value})};
 document.querySelectorAll("[data-team]").forEach(b=>b.onclick=()=>sync({op:"start",team:Number(b.dataset.team)}));
 document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>{sync({op:b.dataset.op})});
