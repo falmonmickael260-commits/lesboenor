@@ -1,10 +1,18 @@
-const inviteFromLink=new URLSearchParams(location.hash.slice(1)).get("salle");
-if(inviteFromLink){sessionStorage.setItem("roomInvite",inviteFromLink)}
-const roomInvite=sessionStorage.getItem("roomInvite")||"";
+function readInvite(value){
+  try{
+    const url=new URL(value);
+    if(url.origin!==location.origin)return "";
+    const token=new URLSearchParams(url.hash.slice(1)).get("salle")||url.pathname.match(/^\/invitation\/([\w-]+)\/?$/)?.[1]||"";
+    return /^[\w-]{24,128}$/.test(token)?token:"";
+  }catch{return ""}
+}
+let roomInvite=readInvite(location.href)||sessionStorage.getItem("roomInvite")||localStorage.getItem("roomInvite")||"";
+if(roomInvite)sessionStorage.setItem("roomInvite",roomInvite);
 const $=id=>document.getElementById(id);
 let key=sessionStorage.getItem("regie")||"", state=null, busy=false;
 const teams=["Bleus","Rouges"];
 let rosterBase=null;
+$("inviteBox").hidden=!!roomInvite;
 function render(s){
   if(state && s.rev<state.rev)return;
   const changed=!state || s.rev!==state.rev;
@@ -67,20 +75,25 @@ async function sync(action){
   busy=true;
   try{
     const r=await fetch("/api",{method:action?"POST":"GET",headers:{Authorization:"Bearer "+key,"X-Room-Invite":roomInvite},body:action?JSON.stringify({...action,rev:action.rev??state.rev}):undefined});
-    if(r.status===401){key="";sessionStorage.removeItem("regie");state=null;$("game").hidden=true;$("login").hidden=false;throw Error(!roomInvite?"Ouvrez le lien privé complet reçu de votre coanimateur, puis saisissez le code.":"Accès refusé. Vérifiez le code et le lien privé. Après cinq essais incorrects, attendez 15 minutes.")}
+    if(r.status===401){$("inviteBox").hidden=false;key="";sessionStorage.removeItem("regie");state=null;$("game").hidden=true;$("login").hidden=false;throw Error(!roomInvite?"Ouvrez le lien privé complet reçu de votre coanimateur, puis saisissez le code.":"Accès refusé. Vérifiez le code et le lien privé. Après cinq essais incorrects, attendez 15 minutes.")}
     if(r.status===400 && action?.op==="seal"){ $("notice").textContent="Vérifiez le prénom dans l’équipe qualifiée et choisissez deux finalistes différents. Si cette fiche est déjà scellée, ouvrez l’autre.";return}
     if(!r.ok && r.status!==409)throw Error("Connexion interrompue. Vérifiez le panneau avant de réessayer.");
-    render(await r.json());sessionStorage.setItem("regie",key);
+    render(await r.json());if(roomInvite)localStorage.setItem("roomInvite",roomInvite);sessionStorage.setItem("regie",key);
     if(r.status===409)$("notice").textContent="Le panneau a changé sur l’autre appareil. Vérifiez avant de valider.";
     else if(action){if(action.op==="rosters"){rosterBase=null;$("players").open=false}$("notice").textContent="";$("answer").value=""}
   }catch(e){$("notice").textContent=e.message;$("status").textContent="Hors connexion"}
   finally{busy=false}
 }
-$("access").onsubmit=async e=>{e.preventDefault();key=$("key").value.trim();await sync();if(state){$("key").value="";$("notice").textContent=""}};
+$("access").onsubmit=async e=>{e.preventDefault();key=$("key").value.trim();
+  if($("inviteText").value.trim())roomInvite=readInvite($("inviteText").value.trim());
+  if(!roomInvite && /^\d{4}$/.test(key)){
+    key="";$("inviteBox").hidden=false;$("inviteText").focus();$("notice").textContent="Collez le lien privé dans le premier champ, puis appuyez sur Entrer.";return;
+  }
+  await sync();if(state){$("key").value="";$("notice").textContent=""}};
 $("entry").onsubmit=e=>{e.preventDefault();sync({op:"answer",value:$("answer").value})};
 document.querySelectorAll("[data-team]").forEach(b=>b.onclick=()=>sync({op:"start",team:Number(b.dataset.team)}));
 document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>{sync({op:b.dataset.op})});
-$("share").onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+(roomInvite?"#salle="+encodeURIComponent(roomInvite):""));$("notice").textContent="Lien copié. Transmettez aussi votre code à votre coanimatrice."}catch{$("notice").textContent=location.origin+(roomInvite?"#salle="+encodeURIComponent(roomInvite):"")}};
+$("share").onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+(roomInvite?"/invitation/"+encodeURIComponent(roomInvite):""));$("notice").textContent="Lien copié. Transmettez aussi votre code à votre coanimatrice."}catch{$("notice").textContent=location.origin+(roomInvite?"/invitation/"+encodeURIComponent(roomInvite):"")}};
 $("exit").onclick=()=>{sessionStorage.removeItem("regie");location.reload()};
 bootFinal();sync();setInterval(()=>{if(!document.hidden)sync()},1000);
 
