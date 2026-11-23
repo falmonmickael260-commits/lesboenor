@@ -13,6 +13,15 @@ function render(s){
   $("players").hidden=s.phase!=="start";
   $("duel").hidden=s.phase!=="start";
   $("pair").textContent=s.duel.every(Boolean)?s.duel[0]+" (Bleus) et "+s.duel[1]+" (Rouges)":"Renseignez les prénoms dans la composition des équipes.";
+  const stage=s.phase==="review"?s.previous:s.phase;
+  const calling=["buzz","play","steal"].includes(stage);
+  $("duel").hidden=s.phase!=="start"&&!calling;
+  $("duel").querySelector("small").textContent=stage==="buzz"?"AU BUZZER":stage==="play"?"À TOI DE RÉPONDRE":stage==="steal"?"VOL · PAROLE AU CHEF":"À APPELER AU BUZZER";
+  if(calling)$("pair").textContent=[s.speaker,teams[s.speakerTeam]].filter(Boolean).join(" · ");
+  for(const b of document.querySelectorAll("[data-team]")){
+    const team=Number(b.dataset.team);
+    b.textContent=(s.duel[team]||"Les "+teams[team])+" · premier buzzer";
+  }
   for(const [i,color] of ["blue","red"].entries()){
     const card=$(color).parentElement;
     let badge=card.querySelector(".chief");
@@ -32,7 +41,7 @@ function render(s){
     if(s.final)renderFinal(s);
   }
   for(const [id,value] of Object.entries({blue:s.scores[0],red:s.scores[1],pot:s.pot,round:"MANCHE "+(s.i+1)+" / "+s.total,question:s.question,instruction:s.slots.length+" réponses à trouver",message:s.msg,strikes:s.errors+" / 3 erreurs"}))$(id).textContent=value;
-  $("turn").textContent=s.phase==="end"?"Manche terminée":s.team===null?"Prise de main":(s.phase==="steal"||s.previous==="steal"?"Vol · "+teams[1-s.team]:"À la main · "+teams[s.team]);
+  $("turn").textContent=s.phase==="end"?"Manche terminée":stage==="buzz"?"Duel · "+teams[s.speakerTeam]:s.team===null?"Prise de main":(s.phase==="steal"||s.previous==="steal"?"Vol · "+teams[1-s.team]:"À la main · "+teams[s.team]);
   $("board").replaceChildren(...s.slots.map((v,i)=>{
     const el=document.createElement("div"),number=document.createElement("b"),label=document.createElement("span");
     el.className="slot"+(v?" hit":"");
@@ -44,7 +53,7 @@ function render(s){
   }));
   $("instruction").textContent=s.found.length+" / "+s.slots.length+" réponses dévoilées";
   $("strikes").textContent="Erreurs "+("✕ ".repeat(s.errors))+("○ ".repeat(3-s.errors));
-  for(const [id,on] of Object.entries({start:s.phase==="start",entry:["play","steal"].includes(s.phase),review:s.phase==="review",next:s.phase==="end"}))$(id).hidden=!on;
+  for(const [id,on] of Object.entries({start:s.phase==="start",entry:["buzz","play","steal"].includes(s.phase),review:s.phase==="review",next:s.phase==="end"}))$(id).hidden=!on;
   const last=s.i===s.total-1;
   $("next").textContent=last?"Passer à la finale":"Question suivante →";
   if(last && s.phase==="end")$("turn").textContent=s.scores[0]===s.scores[1]?"Égalité finale": "Qualification des "+teams[Number(s.scores[1]>s.scores[0])];
@@ -168,6 +177,7 @@ function renderFinal(s){
   $("finalName").value=draft[0]||"";$("finalPlayers").replaceChildren(...s.rosters[f.team].map(n=>new Option(n)));
   $("finalFields").replaceChildren(...f.prompts.map((q,i)=>{const label=document.createElement("label"),input=document.createElement("input");label.textContent=(i+1)+". "+q;input.required=true;input.maxLength=180;input.value=draft[i+1]||"";input.placeholder="Réponse du joueur";input.style.cssText="display:block;width:100%;margin:5px 0 14px";label.append(input);return label}));
 }
+
 
 
 
