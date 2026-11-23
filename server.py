@@ -1,3 +1,4 @@
+import random
 import threading, time
 import hmac, json, os, re, sqlite3, unicodedata
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -11,11 +12,22 @@ db = directory/"plateau.sqlite3"
 secret = os.environ.get("HOST_KEY", "")
 if len(secret) < 12:
     raise SystemExit("Définissez HOST_KEY avec au moins 12 caractères.")
-def fresh():
-    return dict(i=0,team=None,phase="start",found=[],pot=0,errors=0,scores=[0,0],history=[],msg="Choisissez l’équipe qui prend la main.")
+def fresh(remaining=None):
+    pool=list(range(len(six_boards))) if not remaining else list(remaining)
+    if not remaining: random.SystemRandom().shuffle(pool)
+    return dict(deck=pool[:6],remaining=pool[6:],i=0,team=None,phase="start",found=[],pot=0,errors=0,scores=[0,0],history=[],msg="Choisissez l’équipe qui prend la main.")
 with sqlite3.connect(db) as c:
     c.execute("CREATE TABLE IF NOT EXISTS game(id INTEGER PRIMARY KEY, rev INTEGER, body TEXT)")
     c.execute("INSERT OR IGNORE INTO game VALUES(1,0,?)",(json.dumps(fresh()),))
+    rev,body=c.execute("SELECT rev,body FROM game WHERE id=1").fetchone()
+    old=json.loads(body)
+    if "deck" not in old and (old.get("six") or old["phase"]=="start"):
+        prefix=list(range(old["i"]+1))
+        rest=list(range(len(prefix),len(six_boards)))
+        random.SystemRandom().shuffle(rest)
+        cycle=prefix+rest
+        old.update(deck=cycle[:6],remaining=cycle[6:])
+        c.execute("UPDATE game SET body=?,rev=? WHERE id=1",(json.dumps(old),rev+1))
 
 teams=["Bleus","Rouges"]
 def norm(s):
@@ -83,12 +95,13 @@ def final_action(s,a):
         f.update(total=total,rows=rows)
         s["phase"]="verdict"
     elif op=="restart" and s["phase"]=="verdict":
-        return {**fresh(),"rosters":s.get("rosters",[[],[]])}
+        return {**fresh(s.get("remaining",list(range(6,len(six_boards))))),"rosters":s.get("rosters",[[],[]])}
     else: raise ValueError()
     return s
 
 
 def current_board(s):
+    if "deck" in s: return six_boards[s["deck"][s["i"]]]
     bank=six_boards if s.get("six") or s["phase"]=="start" else boards
     return bank[s["i"]]
 
@@ -102,6 +115,8 @@ def public(s,rev):
     rosters=s.get("rosters",[[],[]])
     duel=[names[s["i"]%len(names)] if names else None for names in rosters]
     q=current_board(s)
+    s.pop("deck",None)
+    s.pop("remaining",None)
     slots=[]
     for i,(label,pts,_) in enumerate(q["rows"]):
         rank=1+sum(p>pts for _,p,_ in q["rows"])
