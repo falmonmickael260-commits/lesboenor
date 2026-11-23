@@ -143,6 +143,20 @@ def public(s,rev):
     q=current_board(s)
     s.pop("deck",None)
     s.pop("remaining",None)
+    stage=s.get("previous") if s["phase"]=="review" else s["phase"]
+    team=s["team"]
+    speaker=None
+    if stage=="buzz":
+        team=s["buzzTeam"]
+        speaker=duel[team]
+    elif stage=="steal":
+        team=1-team
+        speaker=s.get("captains",[None,None])[team]
+    elif stage=="play" and team is not None and rosters[team]:
+        names=rosters[team]
+        start=names.index(duel[team]) if duel[team] in names else 0
+        speaker=names[(start+s.get("turnOffset",len(s["found"])+s["errors"]))%len(names)]
+    s.update(speaker=speaker,speakerTeam=team)
     slots=[]
     for i,(label,pts,_) in enumerate(q["rows"]):
         rank=1+sum(p>pts for _,p,_ in q["rows"])
@@ -153,6 +167,23 @@ def finish(s,winner,stolen):
     outcome=("Vol réussi" if stolen else "Manche remportée")+f' · {teams[winner]} +{s["pot"]} points'
     s["history"].append(outcome)
     s.update(phase="end",msg=outcome)
+def resolve_buzz(s,points):
+    team=s["buzzTeam"]
+    first=s.get("firstBuzz")
+    top=current_board(s)["rows"][0][1]
+    if first is None and points < top:
+        s["firstBuzz"]=[team,points]
+    elif first is not None and not points and not first[1]:
+        s.pop("firstBuzz")
+    else:
+        winner=first[0] if first and first[1]>=points else team
+        s.update(team=winner,phase="play",turnOffset=1)
+        s.pop("firstBuzz",None)
+        s["msg"]+=" · Les "+teams[winner]+" prennent la main."
+        return
+    s.update(buzzTeam=1-team,phase="buzz")
+    s["msg"]+=" · Au joueur adverse de répondre."
+
 def act(s,a):
     phase=s["phase"]
     op=a.get("op")
@@ -173,7 +204,8 @@ def act(s,a):
         for team,name in enumerate(s.get("pair",[])):
             if name: s["called"][team].append(name)
         s["six"]=True
-        s.update(team=a["team"],phase="play",msg="Lisez la question, puis saisissez la première réponse.")
+        s.pop("firstBuzz",None)
+        s.update(team=None,buzzTeam=a["team"],phase="buzz",turnOffset=0,msg="Saisissez la réponse de la personne qui a buzzé.")
     elif op=="next" and phase=="end":
         if s["i"]==len(boards)-1:
             blue,red=s["scores"]
@@ -186,12 +218,16 @@ def act(s,a):
         s.update(phase=s.pop("previous"),msg="Demandez une précision, puis reformulez la réponse.")
     elif op=="miss" and phase=="review":
         prev=s.pop("previous")
-        if prev=="steal": finish(s,s["team"],False)
+        if prev=="buzz":
+            s["msg"]="Hors du tableau au buzzer."
+            resolve_buzz(s,0)
+        elif prev=="steal": finish(s,s["team"],False)
         else:
+            s["turnOffset"]=s.get("turnOffset",len(s["found"])+s["errors"])+1
             s["errors"]+=1
             steal=s["errors"]==3
             s.update(phase="steal" if steal else "play",msg=("Tentative de vol des "+teams[1-s["team"]] if steal else "Hors du tableau · une erreur."))
-    elif op=="answer" and phase in ("play","steal"):
+    elif op=="answer" and phase in ("buzz","play","steal"):
         raw=a.get("value","")
         if not isinstance(raw,str) or not 0<len(raw.strip())<=180: raise ValueError()
         v=norm(raw)
@@ -208,6 +244,10 @@ def act(s,a):
             s["found"].append(i)
             s["pot"]+=pts
             s["msg"]=f'{label} · '+("Top réponse !" if rank==1 else f'Nº {rank}')+f' · +{pts} points'
+            if phase=="buzz":
+                resolve_buzz(s,pts)
+                return s
+            if phase=="play": s["turnOffset"]=s.get("turnOffset",len(s["found"])-1+s["errors"])+1
             if phase=="steal" or len(s["found"])==len(rows):
                 result=s["msg"]
                 finish(s,1-s["team"] if phase=="steal" else s["team"],phase=="steal")
@@ -272,6 +312,7 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,TypeError): self.send(400,{})
 if __name__=="__main__":
     ThreadingHTTPServer(("0.0.0.0",int(os.getenv("PORT","8080"))),Handler).serve_forever()
+
 
 
 
