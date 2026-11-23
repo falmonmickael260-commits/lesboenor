@@ -141,7 +141,7 @@ function drawNames(names,team){
   $("list"+team).replaceChildren();
   $("add"+team).hidden=false;
   $("add"+team).onclick=()=>addName(team,"",true);
-  for(let i=0;i<Math.max(5,names.length);i++)addName(team,names[i]||"");
+  for(let i=0;i<Math.max(6,names.length);i++)addName(team,names[i]||"");
   choices(state.captains?.[team]);
 }
 $("rosterForm").oninput=()=>{if(rosterBase===null)rosterBase=state.rev};
