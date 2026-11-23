@@ -8,11 +8,17 @@ let rosterBase=null;
 function render(s){
   if(state && s.rev<state.rev)return;
   const changed=!state || s.rev!==state.rev;
-  const rosterChange=JSON.stringify(state?.rosters)!==JSON.stringify(s.rosters);
+  const rosterChange=JSON.stringify(state?.rosters)!==JSON.stringify(s.rosters)||JSON.stringify(state?.captains)!==JSON.stringify(s.captains);
   state=s;
   $("players").hidden=s.phase!=="start";
   $("duel").hidden=s.phase!=="start";
   $("pair").textContent=s.duel.every(Boolean)?s.duel[0]+" (Bleus) et "+s.duel[1]+" (Rouges)":"Renseignez les prénoms dans la composition des équipes.";
+  for(const [i,color] of ["blue","red"].entries()){
+    const card=$(color).parentElement;
+    let badge=card.querySelector(".chief");
+    if(!badge){badge=document.createElement("span");badge.className="chief";badge.style.cssText="display:block;font-size:12px;letter-spacing:0;overflow-wrap:anywhere";card.append(badge)}
+    badge.textContent=s.captains?.[i]?"Chef · "+s.captains[i]:"";
+  }
   if(rosterChange){
     s.rosters.forEach(drawNames);
     rosterBase=null;
@@ -87,11 +93,26 @@ function addName(team,value="",focus=false){
   if(focus)input.focus();
 }
 function drawNames(names,team){
+  const list=$("list"+team);
+  let select=$("chief"+team);
+  if(!select){
+    const label=document.createElement("label");label.textContent="Chef d’équipe";
+    select=document.createElement("select");select.id="chief"+team;select.style.cssText="display:block;width:100%;min-height:44px;padding:6px;font:inherit;margin:4px 0 12px";
+    label.append(select);list.before(label);
+  }
+  function choices(preferred){
+    const selected=preferred||select.value;
+    const values=Array.from(list.querySelectorAll("input"),x=>x.value.trim()).filter(Boolean);
+    select.replaceChildren(...values.map(n=>new Option(n,n)));
+    if(values.includes(selected))select.value=selected;
+  }
+  list.oninput=()=>choices();
   $("names"+team).hidden=true;
   $("list"+team).replaceChildren();
   $("add"+team).hidden=false;
   $("add"+team).onclick=()=>addName(team,"",true);
   for(let i=0;i<Math.max(5,names.length);i++)addName(team,names[i]||"");
+  choices(state.captains?.[team]);
 }
 $("rosterForm").oninput=()=>{if(rosterBase===null)rosterBase=state.rev};
 $("rosterForm").onsubmit=e=>{
@@ -100,7 +121,10 @@ $("rosterForm").onsubmit=e=>{
   if(rosters.some(group=>!group.length||group.length>30||group.some(n=>n.length>40))){
     $("notice").textContent="Indiquez entre 1 et 30 joueurs par équipe, avec 40 caractères maximum par prénom.";return;
   }
-  sync({op:"rosters",rosters,rev:rosterBase??state.rev});
+  if(rosters.some(group=>new Set(group.map(n=>n.toLowerCase())).size!==group.length)){
+    $("notice").textContent="Pour distinguer deux joueurs dans une équipe, ajoutez une initiale ou un pseudo.";return;
+  }
+  sync({op:"rosters",rosters,captains:[0,1].map(i=>$("chief"+i).value),rev:rosterBase??state.rev});
 };
 
 
@@ -144,5 +168,6 @@ function renderFinal(s){
   $("finalName").value=draft[0]||"";$("finalPlayers").replaceChildren(...s.rosters[f.team].map(n=>new Option(n)));
   $("finalFields").replaceChildren(...f.prompts.map((q,i)=>{const label=document.createElement("label"),input=document.createElement("input");label.textContent=(i+1)+". "+q;input.required=true;input.maxLength=180;input.value=draft[i+1]||"";input.placeholder="Réponse du joueur";input.style.cssText="display:block;width:100%;margin:5px 0 14px";label.append(input);return label}));
 }
+
 
 
