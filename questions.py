@@ -22,3 +22,19 @@ board("Quelle marque de glace les Français préféraient-ils en 2021 ?", ice, [
 ("Häagen-Dazs",24,"haagen dazs|hagen daz|haagen daaz"),("Magnum",18,"magnums"),("Carte d’Or",14,"carte dor|carte d or")]),
 board("Quelle activité sportive arrivait en tête des pratiques en France en 2018 ? Trouvez le trio.", sport, [
 ("Randonnée",20,"rando|marche|faire de la randonnee"),("Course à pied",14,"running|jogging|footing|courir"),("Fitness",13,"gym|gymnastique|crossfit|remise en forme")])]
+
+
+livret=("Family Feud · livret de sondages, édition américaine 2008","https://content.cmpl.org/bg/FamilyFeud.pdf")
+six_boards=[
+board("Votre voisin frappe à la porte. Que pourrait-il vouloir vous emprunter ?",livret,[
+("Du sucre",26,"sucre en poudre"),("Une tondeuse",18,"tondeuse a gazon"),("Une échelle",13,"echelle"),("Une pelle",10,"pelle"),("Des outils",8,"outillage|boite a outils"),("Un marteau",7,"marteau")]),
+board("Sur la route, quelle habitude des autres conducteurs vous agace ?",livret,[
+("Oublier le clignotant",31,"pas de clignotant|sans clignotant|ne pas mettre son clignotant|oubli du clignotant"),("Couper la route",30,"queue de poisson|faire une queue de poisson|il me coupe la route"),("Rouler trop lentement",13,"rouler lentement|lenteur|rouler doucement"),("Coller la voiture devant",10,"coller|coller au pare chocs|suivre de trop pres"),("Téléphoner au volant",7,"telephone|telephoner|portable"),("Rouler trop vite",4,"vitesse|exces de vitesse|aller trop vite")]),
+board("Dans une grande demeure luxueuse, que remarquez-vous en entrant ?",livret,[
+("Un lustre",25,"grand lustre|lustre en cristal"),("Des tableaux",10,"peintures|tableau|oeuvres d art"),("Un escalier",8,"grand escalier|escalier monumental"),("Des antiquités",6,"antiquite|objets anciens"),("De beaux meubles",6,"mobilier|meubles de luxe|meubles"),("Du personnel de maison",5,"domestiques|majordome|serviteurs|domestique")]),
+board("Que met-on dans une grande salade composée façon « salade du chef » ?",livret,[
+("De la laitue",36,"salade|salade verte|feuilles de salade"),("Du jambon",22,"des de jambon"),("Des œufs durs",10,"oeuf|oeufs|oeuf dur"),("De la tomate",9,"tomates|tomates cerises"),("Du fromage",7,"des de fromage|gruyere|emmental"),("Du poulet",5,"blanc de poulet|poulet grille")]),
+board("Au téléphone, quel service vous attendez-vous à voir vous mettre en attente ?",livret,[
+("Un cabinet médical",30,"docteur|medecin|cabinet du medecin"),("Un opérateur téléphonique",18,"operateur|compagnie de telephone|service client telephonique"),("Une banque",13,"banquier|ma banque"),("Une assurance",12,"assureur|compagnie d assurance"),("Un grand magasin",9,"magasin|grande surface"),("Un restaurant",6,"resto|restaurant")]),
+board("Qu’est-ce qui donne envie de choisir l’été plutôt que l’hiver ?",livret,[
+("La chaleur",39,"il fait chaud|temps chaud|beau temps|soleil"),("Les vêtements légers",17,"vetements plus legers|short|tenue legere"),("Plus d’activités",10,"activites|activites dehors|activites en plein air"),("La plage",10,"aller a la plage|plages"),("On s’amuse davantage",6,"amusement|s amuser|plus amusant"),("L’absence de neige",4,"pas de neige|il ne neige pas")])]
