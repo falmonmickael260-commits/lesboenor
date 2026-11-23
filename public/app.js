@@ -13,10 +13,50 @@ let key=sessionStorage.getItem("regie")||"", state=null, busy=false;
 const teams=["Bleus","Rouges"];
 let rosterBase=null;
 $("inviteBox").hidden=!!roomInvite;
+let audioCtx;
+let soundEnabled=localStorage.getItem("soundEnabled")!=="off";
+const soundToggle=document.createElement("button");
+soundToggle.type="button";
+$("game").querySelector("footer").prepend(soundToggle);
+function soundLabel(){
+  soundToggle.textContent=soundEnabled?"Couper les bruitages":"Activer les bruitages";
+  soundToggle.setAttribute("aria-pressed",String(soundEnabled));
+}
+function unlockSound(){
+  const Context=window.AudioContext||window.webkitAudioContext;
+  if(!soundEnabled||!Context)return;
+  try{
+    audioCtx=audioCtx||new Context();
+    if(audioCtx.state!=="running")audioCtx.resume().catch(()=>{});
+  }catch{}
+}
+document.addEventListener("click",unlockSound,true);
+document.addEventListener("keydown",unlockSound,true);
+soundToggle.onclick=()=>{
+  soundEnabled=!soundEnabled;localStorage.setItem("soundEnabled",soundEnabled?"on":"off");
+  soundLabel();unlockSound();
+};
+soundLabel();
+function playAnswerSound(kind){
+  if(!soundEnabled||audioCtx?.state!=="running")return;
+  const correct=kind==="correct",start=audioCtx.currentTime;
+  const tones=correct?[[660,0,.13],[880,.12,.24]]:[[115,0,.32],[119,0,.32]];
+  for(const [frequency,delay,duration] of tones){
+    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),t=start+delay;
+    osc.type=correct?"sine":"sawtooth";osc.frequency.value=frequency;
+    gain.gain.setValueAtTime(.0001,t);
+    gain.gain.exponentialRampToValueAtTime(correct?.16:.045,t+.014);
+    gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
+    osc.connect(gain);gain.connect(audioCtx.destination);
+    osc.onended=()=>{osc.disconnect();gain.disconnect()};
+    osc.start(t);osc.stop(t+duration+.012);
+  }
+}
 function render(s){
   if(state && s.rev<state.rev)return;
   const changed=!state || s.rev!==state.rev;
   const rosterChange=JSON.stringify(state?.rosters)!==JSON.stringify(s.rosters)||JSON.stringify(state?.captains)!==JSON.stringify(s.captains);
+  if(state && s.sound && s.sound[0]!==state.sound?.[0] && !document.hidden)playAnswerSound(s.sound[1]);
   state=s;
   $("players").hidden=s.phase!=="start";
   $("duel").hidden=s.phase!=="start";
