@@ -16,6 +16,24 @@ def fresh(remaining=None):
     pool=list(range(len(six_boards))) if not remaining else list(remaining)
     if not remaining: random.SystemRandom().shuffle(pool)
     return dict(deck=pool[:6],remaining=pool[6:],i=0,team=None,phase="start",found=[],pot=0,errors=0,scores=[0,0],history=[],msg="Choisissez l’équipe qui prend la main.")
+def draw_duel(s, keep=False):
+    groups=s.get("rosters",[[],[]])
+    history=s.setdefault("called",[[],[]])
+    old=s.get("pair",[None,None])
+    pair=[]
+    for team,names in enumerate(groups):
+        if keep and old[team] in names:
+            pair.append(old[team])
+            continue
+        eligible=[n for n in names if n not in history[team]]
+        if not eligible and names:
+            previous=history[team][-1:] 
+            history[team]=[]
+            eligible=[n for n in names if n not in previous] or names
+        pair.append(random.SystemRandom().choice(eligible) if eligible else None)
+    s["pair"]=pair
+    return s
+
 with sqlite3.connect(db) as c:
     c.execute("CREATE TABLE IF NOT EXISTS game(id INTEGER PRIMARY KEY, rev INTEGER, body TEXT)")
     c.execute("INSERT OR IGNORE INTO game VALUES(1,0,?)",(json.dumps(fresh()),))
@@ -28,6 +46,14 @@ with sqlite3.connect(db) as c:
         cycle=prefix+rest
         old.update(deck=cycle[:6],remaining=cycle[6:])
         c.execute("UPDATE game SET body=?,rev=? WHERE id=1",(json.dumps(old),rev+1))
+
+    if "pair" not in old:
+        groups=old.get("rosters",[[],[]])
+        old["captains"]=[g[0] if g else None for g in groups]
+        completed=old["i"]+int(old["phase"]!="start")
+        old["called"]=[[g[j%len(g)] for j in range(completed)] if g else [] for g in groups]
+        draw_duel(old)
+        c.execute("UPDATE game SET body=?,rev=rev+1 WHERE id=1",(json.dumps(old),))
 
 teams=["Bleus","Rouges"]
 def norm(s):
@@ -95,7 +121,7 @@ def final_action(s,a):
         f.update(total=total,rows=rows)
         s["phase"]="verdict"
     elif op=="restart" and s["phase"]=="verdict":
-        return {**fresh(s.get("remaining",list(range(6,len(six_boards))))),"rosters":s.get("rosters",[[],[]])}
+        return draw_duel({**fresh(s.get("remaining",list(range(6,len(six_boards))))),"rosters":s.get("rosters",[[],[]]),"captains":s.get("captains",[None,None])})
     else: raise ValueError()
     return s
 
@@ -113,7 +139,7 @@ def public(s,rev):
         f.update(goal=goal,prompts=[q[0] for q in final_questions])
         s['final']=f
     rosters=s.get("rosters",[[],[]])
-    duel=[names[s["i"]%len(names)] if names else None for names in rosters]
+    duel=s.get("pair",[None,None])
     q=current_board(s)
     s.pop("deck",None)
     s.pop("remaining",None)
@@ -137,8 +163,15 @@ def act(s,a):
         for names in groups:
             if not isinstance(names,list) or not 1<=len(names)<=30: raise ValueError()
             if any(not isinstance(n,str) or not 1<=len(n.strip())<=40 for n in names): raise ValueError()
-        s["rosters"]=[[n.strip() for n in names] for names in groups]
+        groups=[[n.strip() for n in names] for names in groups]
+        captains=a.get("captains",[g[0] for g in groups])
+        if not isinstance(captains,list) or len(captains)!=2: raise ValueError()
+        if any(captains[i] not in names or len(set(n.casefold() for n in names))!=len(names) for i,names in enumerate(groups)): raise ValueError()
+        s.update(rosters=groups,captains=captains)
+        draw_duel(s,keep=True)
     elif op=="start" and phase=="start" and a.get("team") in (0,1):
+        for team,name in enumerate(s.get("pair",[])):
+            if name: s["called"][team].append(name)
         s["six"]=True
         s.update(team=a["team"],phase="play",msg="Lisez la question, puis saisissez la première réponse.")
     elif op=="next" and phase=="end":
@@ -148,6 +181,7 @@ def act(s,a):
             s["final"]=dict(id=os.urandom(12).hex(),team=None if blue==red else int(red>blue),sheets=[None,None])
             return s
         s.update(i=s["i"]+1,team=None,phase="start",found=[],pot=0,errors=0,msg="Choisissez l’équipe qui prend la main.")
+        draw_duel(s)
     elif op=="retry" and phase=="review":
         s.update(phase=s.pop("previous"),msg="Demandez une précision, puis reformulez la réponse.")
     elif op=="miss" and phase=="review":
@@ -238,5 +272,6 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,TypeError): self.send(400,{})
 if __name__=="__main__":
     ThreadingHTTPServer(("0.0.0.0",int(os.getenv("PORT","8080"))),Handler).serve_forever()
+
 
 
