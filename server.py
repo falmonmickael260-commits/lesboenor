@@ -169,20 +169,10 @@ def finish(s,winner,stolen):
     s.update(phase="end",msg=outcome)
 def resolve_buzz(s,points):
     team=s["buzzTeam"]
-    first=s.get("firstBuzz")
-    top=current_board(s)["rows"][0][1]
-    if first is None and points < top:
-        s["firstBuzz"]=[team,points]
-    elif first is not None and not points and not first[1]:
-        s.pop("firstBuzz")
-    else:
-        winner=first[0] if first and first[1]>=points else team
-        s.update(team=winner,phase="play",turnOffset=1)
-        s.pop("firstBuzz",None)
-        s["msg"]+=" · Les "+teams[winner]+" prennent la main."
-        return
-    s.update(buzzTeam=1-team,phase="buzz")
-    s["msg"]+=" · Au joueur adverse de répondre."
+    winner=team if points else 1-team
+    s.update(team=winner,phase="play",turnOffset=1 if points else 0,errors=0)
+    s.pop("firstBuzz",None)
+    s["msg"]+=" · Les "+teams[winner]+" prennent la main."
 
 def act(s,a):
     phase=s["phase"]
