@@ -173,6 +173,7 @@ function bootFinal(){
     sync({op:"seal",session:f.id,seat,name:$("finalName").value,answers:Array.from($("finalFields").querySelectorAll("input"),x=>x.value)});
   };
   $("reveal").onclick=()=>sync({op:"reveal"});
+  if($("newGame"))$("newGame").onclick=()=>{if(confirm("Commencer une nouvelle partie ? Les scores seront remis à zéro et les équipes conservées."))sync({op:"restart"})};
   $("restart").onclick=()=>{if(confirm("Effacer les scores et recommencer ?"))sync({op:"restart"})};
 }
 function renderFinal(s){
