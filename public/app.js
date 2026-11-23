@@ -1,3 +1,6 @@
+const inviteFromLink=new URLSearchParams(location.hash.slice(1)).get("salle");
+if(inviteFromLink){sessionStorage.setItem("roomInvite",inviteFromLink);history.replaceState(null,"",location.pathname)}
+const roomInvite=sessionStorage.getItem("roomInvite")||"";
 const $=id=>document.getElementById(id);
 let key=sessionStorage.getItem("regie")||"", state=null, busy=false;
 const teams=["Bleus","Rouges"];
@@ -33,7 +36,7 @@ async function sync(action){
   if(busy){if(action)$("notice").textContent="Synchronisation en cours. Validez de nouveau dans un instant.";return}
   busy=true;
   try{
-    const r=await fetch("/api",{method:action?"POST":"GET",headers:{Authorization:"Bearer "+key},body:action?JSON.stringify({...action,rev:action.rev??state.rev}):undefined});
+    const r=await fetch("/api",{method:action?"POST":"GET",headers:{Authorization:"Bearer "+key,"X-Room-Invite":roomInvite},body:action?JSON.stringify({...action,rev:action.rev??state.rev}):undefined});
     if(r.status===401){key="";sessionStorage.removeItem("regie");state=null;$("game").hidden=true;$("login").hidden=false;throw Error("Code incorrect.")}
     if(!r.ok && r.status!==409)throw Error("Connexion interrompue. Vérifiez le panneau avant de réessayer.");
     render(await r.json());sessionStorage.setItem("regie",key);
@@ -46,7 +49,7 @@ $("access").onsubmit=async e=>{e.preventDefault();key=$("key").value;await sync(
 $("entry").onsubmit=e=>{e.preventDefault();sync({op:"answer",value:$("answer").value})};
 document.querySelectorAll("[data-team]").forEach(b=>b.onclick=()=>sync({op:"start",team:Number(b.dataset.team)}));
 document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>{if(b.id==="next" && state.i===state.total-1 && !confirm("Recommencer avec les scores à zéro ?"))return;sync({op:b.dataset.op})});
-$("share").onclick=async()=>{try{await navigator.clipboard.writeText(location.origin);$("notice").textContent="Lien copié. Transmettez aussi votre code à votre coanimatrice."}catch{$("notice").textContent=location.origin}};
+$("share").onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+(roomInvite?"#salle="+encodeURIComponent(roomInvite):""));$("notice").textContent="Lien copié. Transmettez aussi votre code à votre coanimatrice."}catch{$("notice").textContent=location.origin+(roomInvite?"#salle="+encodeURIComponent(roomInvite):"")}};
 $("exit").onclick=()=>{sessionStorage.removeItem("regie");location.reload()};
 sync();setInterval(()=>{if(!document.hidden)sync()},1000);
 
