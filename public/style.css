@@ -14,3 +14,16 @@ main{max-width:990px}header b{font-size:14px;letter-spacing:.19em}header em{disp
 .slot:not(.hit) span{height:2px;width:35%;background:linear-gradient(90deg,#6683a3,transparent)}.slot.hit{background:linear-gradient(150deg,#65502c,#352d21);border-color:#d2a759}.slot.hit strong{margin-left:auto;color:#ffdd91}.scores article{border:1px solid #ffffff35;box-shadow:inset 0 1px #ffffff22}.scores strong{font-size:clamp(26px,5vw,44px);font-variant-numeric:tabular-nums}.scores .blue{background:linear-gradient(120deg,#215caf,#15325d)}.scores .red{background:linear-gradient(120deg,#ac3f58,#641e36)}
 #entry{padding:16px;background:#0e172b;border-radius:12px;border:1px solid #42516b}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #ffcf70;outline-offset:2px}
 @media(max-width:520px){#board{padding:7px;gap:5px}.slot{padding:5px;min-height:48px;gap:5px;font-size:13px}.slot b{min-width:23px;height:23px;font-size:15px}#entry{padding:10px}header{margin-bottom:12px}#regular h1{font-size:27px}}
+
+
+/* Feuilles de passage au buzzer */
+.teamForm{min-width:0;margin:0;border:1px solid #4a648a;border-top:3px solid #73b0ff;background:#14243d;border-radius:14px;padding:12px}
+.team1{background:#2c1e30;border-color:#765063;border-top-color:#ff8f9d}
+.teamForm legend{padding:0 8px;font-weight:750;color:#a9d1ff}.team1 legend{color:#ffb5bf}
+.nameList{display:grid;gap:7px}.nameList label{display:flex;align-items:center;gap:10px;margin:0;color:#bdcce1}
+.nameList span{font:600 13px ui-monospace,monospace}.nameList input{width:100%;min-height:44px;font-size:16px;padding:8px 12px}
+.addPlayer{margin-top:10px;background:transparent;color:#f2ecdf;border:1px solid #66738c;min-height:44px}
+#players>summary{font-weight:700;font-size:18px}#duel{display:flex;align-items:center;gap:20px;padding:16px 24px}#duel small{max-width:100px}#duel h2{margin:0}
+#regular,#finale,.slot,.scores article{min-width:0}.slot span{overflow-wrap:anywhere}
+@media(min-width:760px){#rosterForm>.groups{gap:22px}#regular{padding:32px 40px}#entry label{font-size:18px}.scores article{padding:15px}}
+@media(max-width:600px){.groups{grid-template-columns:minmax(0,1fr)}.teamForm{padding:10px}#players{padding:14px}#duel{display:block;padding:14px 18px}#duel small{max-width:none}#duel h2{margin-top:4px;font-size:21px}#rosterForm>button,#entry button{min-height:44px}#rosterForm>button{width:100%}footer{flex-wrap:wrap}#regular,#finale{padding:16px}input{font-size:16px}}
