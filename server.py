@@ -3,6 +3,7 @@ import threading, time
 import hmac, json, os, re, sqlite3, unicodedata
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlsplit
 from questions import boards, six_boards
 
 ROOT = Path(__file__).resolve().parent
@@ -323,14 +324,17 @@ class Handler(BaseHTTPRequestHandler):
             c.execute("INSERT INTO pin_attempts VALUES (?)", (now,))
             return False
     def do_GET(self):
+        # Les liens partagés peuvent contenir des paramètres de suivi (?utm_source=...).
+        # Utiliser seulement le chemin pour router les pages et ressources.
+        path=urlsplit(self.path).path
         files={"/":("index.html","text/html; charset=utf-8"),"/app.js":("app.js","text/javascript"),"/style.css":("style.css","text/css")}
-        if re.fullmatch(r"/invitation/[A-Za-z0-9_-]{24,128}/?(?:\?[^ ]*)?",self.path):
+        if re.fullmatch(r"/invitation/[A-Za-z0-9_-]{24,128}/?(?:\?[^ ]*)?",path):
             return self.send(200,(ROOT/"public/index.html").read_bytes(),"text/html; charset=utf-8")
-        if self.path in files:
-            name,kind=files[self.path]
+        if path in files:
+            name,kind=files[path]
             return self.send(200,(ROOT/"public"/name).read_bytes(),kind)
-        if self.path=="/health": return self.send(200,{"ok":True})
-        if self.path!="/api": return self.send(404,{})
+        if path=="/health": return self.send(200,{"ok":True})
+        if path!="/api": return self.send(404,{})
         if not self.authorized(): return self.send(401,{})
         with sqlite3.connect(db) as c:
             rev,body=c.execute("SELECT rev,body FROM game WHERE id=1").fetchone()
