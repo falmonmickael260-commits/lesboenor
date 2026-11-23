@@ -88,7 +88,7 @@ async function sync(action){
     if(!r.ok && r.status!==409)throw Error("Connexion interrompue. Vérifiez le panneau avant de réessayer.");
     render(await r.json());if(roomInvite)localStorage.setItem("roomInvite",roomInvite);sessionStorage.setItem("regie",key);
     if(r.status===409)$("notice").textContent="Le panneau a changé sur l’autre appareil. Vérifiez avant de valider.";
-    else if(action){if(action.op==="rosters"){rosterBase=null;$("players").open=false}$("notice").textContent="";$("answer").value=""}
+    else if(action){if(action.op==="restart_new_players"){state.rosters.forEach(drawNames);rosterBase=null;$("players").open=true;$("list0").querySelector("input")?.focus()}if(action.op==="rosters"){rosterBase=null;$("players").open=false}$("notice").textContent="";$("answer").value=""}
   }catch(e){$("notice").textContent=e.message;$("status").textContent="Hors connexion"}
   finally{busy=false}
 }
@@ -173,8 +173,13 @@ function bootFinal(){
     sync({op:"seal",session:f.id,seat,name:$("finalName").value,answers:Array.from($("finalFields").querySelectorAll("input"),x=>x.value)});
   };
   $("reveal").onclick=()=>sync({op:"reveal"});
-  if($("newGame"))$("newGame").onclick=()=>{if(confirm("Commencer une nouvelle partie ? Les scores seront remis à zéro et les équipes conservées."))sync({op:"restart"})};
-  $("restart").onclick=()=>{if(confirm("Effacer les scores et recommencer ?"))sync({op:"restart"})};
+  const choices=$("restartChoices");
+  function chooseTeams(){choices.returnValue="cancel";choices.showModal()}
+  $("newGame").onclick=chooseTeams;
+  $("restart").onclick=chooseTeams;
+  choices.onclose=()=>{
+    if(["restart_new_players","restart"].includes(choices.returnValue))sync({op:choices.returnValue});
+  };
 }
 function renderFinal(s){
   const f=s.final, playing=s.phase==="private", done=s.phase==="verdict", group=teams[f.team]||"";
