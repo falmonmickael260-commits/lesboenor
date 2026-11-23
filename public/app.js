@@ -27,12 +27,22 @@ function render(s){
   }
   for(const [id,value] of Object.entries({blue:s.scores[0],red:s.scores[1],pot:s.pot,round:"MANCHE "+(s.i+1)+" / "+s.total,question:s.question,instruction:s.slots.length+" réponses à trouver",message:s.msg,strikes:s.errors+" / 3 erreurs"}))$(id).textContent=value;
   $("turn").textContent=s.phase==="end"?"Manche terminée":s.team===null?"Prise de main":(s.phase==="steal"||s.previous==="steal"?"Vol · "+teams[1-s.team]:"À la main · "+teams[s.team]);
-  $("board").replaceChildren(...s.slots.map((v,i)=>{const el=document.createElement("div");el.className="slot"+(v?" hit":"");el.textContent=v?"Nº "+v.rank+" · "+v.label+" · "+v.pts+" pts":"Case "+(i+1)+"　 —";return el}));
+  $("board").replaceChildren(...s.slots.map((v,i)=>{
+    const el=document.createElement("div"),number=document.createElement("b"),label=document.createElement("span");
+    el.className="slot"+(v?" hit":"");
+    number.textContent=String(i+1);label.textContent=v?v.label:"";
+    el.setAttribute("aria-label",v?v.label+" "+v.pts+" points":"Réponse "+(i+1)+" masquée");
+    el.append(number,label);
+    if(v){const pts=document.createElement("strong");pts.textContent=v.pts;el.append(pts)}
+    return el;
+  }));
+  $("instruction").textContent=s.found.length+" / "+s.slots.length+" réponses dévoilées";
+  $("strikes").textContent="Erreurs "+("✕ ".repeat(s.errors))+("○ ".repeat(3-s.errors));
   for(const [id,on] of Object.entries({start:s.phase==="start",entry:["play","steal"].includes(s.phase),review:s.phase==="review",next:s.phase==="end"}))$(id).hidden=!on;
   const last=s.i===s.total-1;
   $("next").textContent=last?"Passer à la finale":"Question suivante →";
   if(last && s.phase==="end")$("turn").textContent=s.scores[0]===s.scores[1]?"Égalité finale": "Qualification des "+teams[Number(s.scores[1]>s.scores[0])];
-  $("source").textContent=s.source[0]+" · 1 % = 1 point. ";
+  $("source").textContent=s.source[0]+" · Points du sondage. ";
   if(s.source[1]){const link=document.createElement("a");link.href=s.source[1];link.target="_blank";link.rel="noopener";link.textContent="Consulter l’étude";$("source").append(link)}
   $("history").replaceChildren(...s.history.map(x=>{const el=document.createElement("li");el.textContent=x;return el}));
 }
@@ -110,3 +120,4 @@ function renderFinal(s){
   $("finalName").value=draft[0]||"";$("finalPlayers").replaceChildren(...s.rosters[f.team].map(n=>new Option(n)));
   $("finalFields").replaceChildren(...f.prompts.map((q,i)=>{const label=document.createElement("label"),input=document.createElement("input");label.textContent=(i+1)+". "+q;input.required=true;input.maxLength=180;input.value=draft[i+1]||"";input.placeholder="Réponse du joueur";input.style.cssText="display:block;width:100%;margin:5px 0 14px";label.append(input);return label}));
 }
+
