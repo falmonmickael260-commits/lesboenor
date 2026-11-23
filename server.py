@@ -12,10 +12,23 @@ db = directory/"plateau.sqlite3"
 secret = os.environ.get("HOST_KEY", "")
 if len(secret) < 12:
     raise SystemExit("Définissez HOST_KEY avec au moins 12 caractères.")
+ROUNDS = 8
+
+def deal(deck, remaining):
+    deck, pool = list(deck), list(remaining)
+    while len(deck) < ROUNDS:
+        if not pool:
+            eligible = [i for i in range(len(six_boards)) if i not in deck]
+            random.SystemRandom().shuffle(eligible)
+            deferred = list(deck)
+            random.SystemRandom().shuffle(deferred)
+            pool = eligible + deferred
+        deck.append(pool.pop(0))
+    return deck, pool
+
 def fresh(remaining=None):
-    pool=list(range(len(six_boards))) if not remaining else list(remaining)
-    if not remaining: random.SystemRandom().shuffle(pool)
-    return dict(deck=pool[:6],remaining=pool[6:],i=0,team=None,phase="start",found=[],pot=0,errors=0,scores=[0,0],history=[],msg="Choisissez l’équipe qui prend la main.")
+    deck,pool=deal([],remaining or [])
+    return dict(deck=deck,remaining=pool,i=0,team=None,phase="start",found=[],pot=0,errors=0,scores=[0,0],history=[],msg="Choisissez l’équipe qui prend la main.")
 def draw_duel(s, keep=False):
     groups=s.get("rosters",[[],[]])
     history=s.setdefault("called",[[],[]])
@@ -46,6 +59,11 @@ with sqlite3.connect(db) as c:
         cycle=prefix+rest
         old.update(deck=cycle[:6],remaining=cycle[6:])
         c.execute("UPDATE game SET body=?,rev=? WHERE id=1",(json.dumps(old),rev+1))
+
+    if old["phase"] not in ("qualify","private","verdict") and len(old.get("deck",[])) < ROUNDS:
+        deck=old.get("deck",list(range(6)))
+        old["deck"],old["remaining"]=deal(deck,old.get("remaining",[]))
+        c.execute("UPDATE game SET body=?,rev=rev+1 WHERE id=1",(json.dumps(old),))
 
     if "pair" not in old:
         groups=old.get("rosters",[[],[]])
@@ -141,6 +159,7 @@ def public(s,rev):
     rosters=s.get("rosters",[[],[]])
     duel=s.get("pair",[None,None])
     q=current_board(s)
+    round_count=len(s.get("deck",boards))
     s.pop("deck",None)
     s.pop("remaining",None)
     stage=s.get("previous") if s["phase"]=="review" else s["phase"]
@@ -161,7 +180,7 @@ def public(s,rev):
     for i,(label,pts,_) in enumerate(q["rows"]):
         rank=1+sum(p>pts for _,p,_ in q["rows"])
         slots.append(dict(rank=rank,label=label,pts=pts) if i in s["found"] or s["phase"]=="end" else None)
-    return {**s,"rosters":rosters,"duel":duel,"slots":slots,"question":q["question"],"source":q["source"] if s["phase"]=="end" else [q["source"][0]],"rev":rev,"total":len(boards)}
+    return {**s,"rosters":rosters,"duel":duel,"slots":slots,"question":q["question"],"source":q["source"] if s["phase"]=="end" else [q["source"][0]],"rev":rev,"total":round_count}
 def finish(s,winner,stolen):
     s["scores"][winner]+=s["pot"]
     outcome=("Vol réussi" if stolen else "Manche remportée")+f' · {teams[winner]} +{s["pot"]} points'
@@ -197,7 +216,7 @@ def act(s,a):
         s.pop("firstBuzz",None)
         s.update(team=None,buzzTeam=a["team"],phase="buzz",turnOffset=0,msg="Saisissez la réponse de la personne qui a buzzé.")
     elif op=="next" and phase=="end":
-        if s["i"]==len(boards)-1:
+        if s["i"]==len(s.get("deck",boards))-1:
             blue,red=s["scores"]
             s["phase"]="qualify" if blue==red else "private"
             s["final"]=dict(id=os.urandom(12).hex(),team=None if blue==red else int(red>blue),sheets=[None,None])
