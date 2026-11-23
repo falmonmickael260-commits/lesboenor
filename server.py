@@ -28,7 +28,73 @@ def close(a,b):
     if len(a)==len(b): return sum(x!=y for x,y in zip(a,b))==1
     short,long=sorted((a,b),key=len)
     return any(long[:i]+long[i+1:]==short for i in range(len(long)))
+# Survey percentages used as points. Only the prompts are sent before the reveal.
+final_questions = [
+    ("Quel fromage figure dans le top 10 des Français de l’enquête YouGov 2015 ?",
+     "https://yougov.com/fr-fr/articles/12592-les-fromages-preferes-des-francais-le-top10-decouv",
+     [("Camembert",41,"camember"),("Chèvre",36,"fromage de chevre|buche de chevre"),("Comté",32,"comte"),
+      ("Roquefort",29,"roquefort"),("Emmental",21,"emmenthal"),("Gruyère",20,"gruyere"),
+      ("Brie",19,"brie"),("Bleu",11,"fromage bleu"),("Parmesan",11,"parmigiano"),("Gorgonzola",7,"gorgonzola")]),
+    ("Quelle garniture sucrée pour crêpes figure sur le podium français de 2021 ?",
+     "https://yougov.com/fr-fr/articles/33824-les-francais-sont-ils-des-fans-de-crepes",
+     [("Sucre",23,"sucre en poudre|du sucre"),("Pâte à tartiner",16,"nutella|pate a tartiner au chocolat"),
+      ("Confiture",15,"confiture de fraise|confiture de fruits")]),
+    ("Quelle garniture de pizza figure parmi les cinq favorites du sondage YouGov Pizza ?",
+     "https://docs.cdn.yougov.com/fdemdtp8no/Pizza_poll_results.pdf",
+     [("Pepperoni",24,"peperoni"),("Saucisse",13,"saucisses|chair a saucisse"),
+      ("Supplément fromage",11,"double fromage|extra fromage|fromage supplementaire|extra cheese"),
+      ("Champignons",9,"champignon"),("Poulet",6,"chicken")])]
+goal = 100
+
+def final_action(s,a):
+    f=s["final"]
+    op=a.get("op")
+    if op=="choose" and s["phase"]=="qualify" and a.get("team") in (0,1):
+        s["phase"]="private"
+        f["team"]=a["team"]
+    elif op=="seal" and s["phase"]=="private" and a.get("session")==f["id"]:
+        seat=a.get("seat")
+        name=a.get("name")
+        answers=a.get("answers")
+        if seat not in (0,1) or f["sheets"][seat] is not None: raise ValueError()
+        if not isinstance(name,str) or not 1<=len(name.strip())<=40: raise ValueError()
+        if not isinstance(answers,list) or len(answers)!=len(final_questions): raise ValueError()
+        if any(not isinstance(x,str) or not 1<=len(x.strip())<=180 for x in answers): raise ValueError()
+        if any(sheet and sheet["name"].casefold()==name.strip().casefold() for sheet in f["sheets"]): raise ValueError()
+        roster=s.get("rosters",[[],[]])[f["team"]]
+        if len(set(roster))>=2 and name.strip() not in roster: raise ValueError()
+        f["sheets"][seat]={"name":name.strip(),"answers":[x.strip() for x in answers]}
+    elif op=="reveal" and s["phase"]=="private" and all(f["sheets"]):
+        total=0
+        rows=[]
+        for i,(question,source,options) in enumerate(final_questions):
+            used=set()
+            results=[]
+            for sheet in f["sheets"]:
+                raw=sheet["answers"][i]
+                hits=[(label,points) for label,points,aliases in options if any(close(norm(raw),norm(alias)) for alias in [label,*aliases.split("|")])]
+                label,points=hits[0] if len(hits)==1 else ("Hors tableau",0)
+                duplicate=label in used and points>0
+                used.add(label)
+                if duplicate: points=0
+                results.append(dict(name=sheet["name"],raw=raw,label=label,points=points,duplicate=duplicate))
+                total+=points
+            rows.append(dict(question=question,source=source,answers=results))
+        f.update(total=total,rows=rows)
+        s["phase"]="verdict"
+    elif op=="restart" and s["phase"]=="verdict":
+        return {**fresh(),"rosters":s.get("rosters",[[],[]])}
+    else: raise ValueError()
+    return s
+
+
 def public(s,rev):
+    s=s.copy()
+    if 'final' in s:
+        f=dict(s['final'])
+        f['sealed']=[sheet['name'] if sheet else None for sheet in f.pop('sheets')]
+        f.update(goal=goal,prompts=[q[0] for q in final_questions])
+        s['final']=f
     rosters=s.get("rosters",[[],[]])
     duel=[names[s["i"]%len(names)] if names else None for names in rosters]
     q=boards[s["i"]]
@@ -45,6 +111,7 @@ def finish(s,winner,stolen):
 def act(s,a):
     phase=s["phase"]
     op=a.get("op")
+    if phase in ("qualify","private","verdict"): return final_action(s,a)
     if op=="rosters" and phase=="start":
         groups=a.get("rosters")
         if not isinstance(groups,list) or len(groups)!=2: raise ValueError()
@@ -55,7 +122,11 @@ def act(s,a):
     elif op=="start" and phase=="start" and a.get("team") in (0,1):
         s.update(team=a["team"],phase="play",msg="Lisez la question, puis saisissez la première réponse.")
     elif op=="next" and phase=="end":
-        if s["i"]==len(boards)-1: return {**fresh(),"rosters":s.get("rosters",[[],[]])}
+        if s["i"]==len(boards)-1:
+            blue,red=s["scores"]
+            s["phase"]="qualify" if blue==red else "private"
+            s["final"]=dict(id=os.urandom(12).hex(),team=None if blue==red else int(red>blue),sheets=[None,None])
+            return s
         s.update(i=s["i"]+1,team=None,phase="start",found=[],pot=0,errors=0,msg="Choisissez l’équipe qui prend la main.")
     elif op=="retry" and phase=="review":
         s.update(phase=s.pop("previous"),msg="Demandez une précision, puis reformulez la réponse.")
@@ -140,10 +211,11 @@ class Handler(BaseHTTPRequestHandler):
                 c.execute("BEGIN IMMEDIATE")
                 rev,body=c.execute("SELECT rev,body FROM game WHERE id=1").fetchone()
                 s=json.loads(body)
-                if a.get("rev")!=rev: return self.send(409,public(s,rev))
+                if a.get("rev")!=rev and not (a.get("op")=="seal" and s["phase"]=="private" and a.get("session")==s["final"]["id"]): return self.send(409,public(s,rev))
                 s=act(s,a)
                 c.execute("UPDATE game SET rev=?,body=? WHERE id=1",(rev+1,json.dumps(s)))
             self.send(200,public(s,rev+1))
         except (ValueError,TypeError): self.send(400,{})
 if __name__=="__main__":
     ThreadingHTTPServer(("0.0.0.0",int(os.getenv("PORT","8080"))),Handler).serve_forever()
+
