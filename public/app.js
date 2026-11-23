@@ -55,7 +55,7 @@ function playAnswerSound(kind){
 function render(s){
   if(state && s.rev<state.rev)return;
   const changed=!state || s.rev!==state.rev;
-  const rosterChange=JSON.stringify(state?.rosters)!==JSON.stringify(s.rosters)||JSON.stringify(state?.captains)!==JSON.stringify(s.captains);
+  const rosterChange=JSON.stringify(state?.rosters)!==JSON.stringify(s.rosters)||JSON.stringify(state?.captains)!==JSON.stringify(s.captains)||s.teamSize!==state?.teamSize;
   if(state && s.sound && s.sound[0]!==state.sound?.[0] && !document.hidden)playAnswerSound(s.sound[1]);
   state=s;
   $("players").hidden=s.phase!=="start";
@@ -77,11 +77,13 @@ function render(s){
     badge.textContent=s.captains?.[i]?"Chef · "+s.captains[i]:"";
   }
   if(rosterChange){
+    $("teamSize").value=String(s.teamSize||0);
     s.rosters.forEach(drawNames);
     rosterBase=null;
     $("players").open=!s.duel.every(Boolean);
   }
   $("login").hidden=true; $("game").hidden=false; $("status").textContent="● Synchronisé";
+  $("formatSummary").textContent=s.teamSize?s.teamSize+" contre "+s.teamSize+" · "+s.total+" manches":"Format libre · "+s.rosters[0].length+" Bleus / "+s.rosters[1].length+" Rouges · "+s.total+" manches";
   if(!changed)return;
   if($("finale")){
     $("regular").hidden=!!s.final;
@@ -139,7 +141,13 @@ $("access").onsubmit=async e=>{e.preventDefault();key=$("key").value.trim();
   }
   await sync();if(state){$("key").value="";$("notice").textContent=""}};
 $("entry").onsubmit=e=>{e.preventDefault();sync({op:"answer",value:$("answer").value})};
-document.querySelectorAll("[data-team]").forEach(b=>b.onclick=()=>sync({op:"start",team:Number(b.dataset.team)}));
+document.querySelectorAll("[data-team]").forEach(b=>b.onclick=()=>{
+  const size=Number($("teamSize").value);
+  if(size!==Number(state.teamSize||0)||size&&state.rosters.some(group=>group.length!==size)){
+    $("players").open=true;$("notice").textContent="Enregistrez les deux équipes avec "+size+" joueurs de chaque côté avant de commencer.";return;
+  }
+  sync({op:"start",team:Number(b.dataset.team)});
+});
 document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>{sync({op:b.dataset.op})});
 $("share").onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+(roomInvite?"/invitation/"+encodeURIComponent(roomInvite):""));$("notice").textContent="Lien copié. Transmettez aussi votre code à votre coanimatrice."}catch{$("notice").textContent=location.origin+(roomInvite?"/invitation/"+encodeURIComponent(roomInvite):"")}};
 $("exit").onclick=()=>{sessionStorage.removeItem("regie");location.reload()};
@@ -147,7 +155,8 @@ bootFinal();sync();setInterval(()=>{if(!document.hidden)sync()},1000);
 
 function addName(team,value="",focus=false){
   const list=$("list"+team), index=list.children.length+1;
-  if(index>30)return;
+  const limit=Number($("teamSize").value)||30;
+  if(index>limit)return;
   const label=document.createElement("label"), number=document.createElement("span"), input=document.createElement("input");
   number.textContent=String(index).padStart(2,"0");input.value=value;
   input.placeholder="Prénom ou pseudo";input.maxLength=40;input.autocomplete="off";
@@ -159,7 +168,7 @@ function addName(team,value="",focus=false){
     if(next)next.querySelector("input").focus();else if(input.value.trim())addName(team,"",true);
   };
   label.append(number,input);list.append(label);
-  $("add"+team).disabled=index===30;
+  $("add"+team).disabled=index>=limit;
   if(focus)input.focus();
 }
 function drawNames(names,team){
@@ -181,20 +190,36 @@ function drawNames(names,team){
   $("list"+team).replaceChildren();
   $("add"+team).hidden=false;
   $("add"+team).onclick=()=>addName(team,"",true);
-  for(let i=0;i<Math.max(7,names.length);i++)addName(team,names[i]||"");
+  for(let i=0;i<Math.max(Number($("teamSize").value)||7,names.length);i++)addName(team,names[i]||"");
   choices(state.captains?.[team]);
+  applyTeamSize();
 }
+function applyTeamSize(){
+  const size=Number($("teamSize").value);
+  for(const team of [0,1]){
+    const list=$("list"+team);
+    while(size&&list.children.length<size)addName(team);
+    while(size&&list.children.length>size&&!list.lastElementChild.querySelector("input").value.trim())list.lastElementChild.remove();
+    $("add"+team).disabled=list.children.length>=(size||30);
+  }
+  $("formatHint").textContent=size?"Saisissez exactement "+size+" joueurs dans chaque équipe ("+(size*2)+" joueurs au total).":"Mode libre : de 1 à 30 joueurs par équipe.";
+}
+$("teamSize").onchange=()=>{if(rosterBase===null)rosterBase=state.rev;applyTeamSize()};
 $("rosterForm").oninput=()=>{if(rosterBase===null)rosterBase=state.rev};
 $("rosterForm").onsubmit=e=>{
   e.preventDefault();
   const rosters=[0,1].map(i=>Array.from($("list"+i).querySelectorAll("input"),input=>input.value.trim()).filter(Boolean));
+  const size=Number($("teamSize").value);
+  if(size&&rosters.some(group=>group.length!==size)){
+    $("notice").textContent="Le format "+size+" contre "+size+" demande exactement "+size+" joueurs chez les Bleus et "+size+" chez les Rouges.";return;
+  }
   if(rosters.some(group=>!group.length||group.length>30||group.some(n=>n.length>40))){
     $("notice").textContent="Indiquez entre 1 et 30 joueurs par équipe, avec 40 caractères maximum par prénom.";return;
   }
   if(rosters.some(group=>new Set(group.map(n=>n.toLowerCase())).size!==group.length)){
     $("notice").textContent="Pour distinguer deux joueurs dans une équipe, ajoutez une initiale ou un pseudo.";return;
   }
-  sync({op:"rosters",rosters,captains:[0,1].map(i=>$("chief"+i).value),rev:rosterBase??state.rev});
+  sync({op:"rosters",rosters,teamSize:size,captains:[0,1].map(i=>$("chief"+i).value),rev:rosterBase??state.rev});
 };
 
 
