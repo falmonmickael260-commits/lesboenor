@@ -228,6 +228,7 @@ def act(s,a):
     elif op=="retry" and phase=="review":
         s.update(phase=s.pop("previous"),msg="Demandez une précision, puis reformulez la réponse.")
     elif op=="miss" and phase=="review":
+        s["sound"]=[os.urandom(8).hex(),"wrong"]
         prev=s.pop("previous")
         if prev=="buzz":
             s["msg"]="Hors du tableau au buzzer."
@@ -252,6 +253,7 @@ def act(s,a):
             i=matches[0]
             label,pts,_=rows[i]
             rank=1+sum(p>pts for _,p,_ in rows)
+            s["sound"]=[os.urandom(8).hex(),"correct"]
             s["found"].append(i)
             s["pot"]+=pts
             s["msg"]=f'{label} · '+("Top réponse !" if rank==1 else f'Nº {rank}')+f' · +{pts} points'
