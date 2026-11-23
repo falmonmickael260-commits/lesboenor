@@ -91,7 +91,7 @@ def act(s,a):
     return s
 
 room_pin = os.getenv("ROOM_PIN", "")
-room_until = int(os.getenv("ROOM_UNTIL", "0"))
+room_invite = os.getenv("ROOM_INVITE", "")
 pin_lock = threading.Lock()
 with sqlite3.connect(db) as c:
     c.execute("CREATE TABLE IF NOT EXISTS pin_attempts (at REAL)")
@@ -109,7 +109,7 @@ class Handler(BaseHTTPRequestHandler):
         header = self.headers.get("Authorization", "")
         if hmac.compare_digest(header.encode(), ("Bearer "+secret).encode()): return True
         if not re.fullmatch(r"Bearer [0-9]{4}", header) or not re.fullmatch(r"[0-9]{4}", room_pin): return False
-        if time.time() >= room_until: return False
+        if len(room_invite) < 24 or not hmac.compare_digest(self.headers.get("X-Room-Invite", "").encode(), room_invite.encode()): return False
         with pin_lock, sqlite3.connect(db) as c:
             now = time.time()
             c.execute("DELETE FROM pin_attempts WHERE at < ?", (now-900,))
