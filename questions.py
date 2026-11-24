@@ -1,116 +1,136 @@
-"""Nouvelle série de 8 questions (24/11/2026).
-Six TOP réponses courtes, score = pourcentage explicitement publié dans l'enquête.
-Des réponses formulées plus simplement à l'oral restent acceptées via les alias.
-Les questions anciennes ne sont pas réutilisées dans ce catalogue.
+"""10 manches variées pour l'édition du 24 novembre 2026.
+Chaque réponse provient d'un tableau de sondage réellement publié et conserve
+son pourcentage d'origine. La formulation affichée tient en un seul mot.
+Certaines études sont anciennes : l'année et le public interrogé sont indiqués
+dans la source. Le classement n'est PAS présenté comme une tendance actuelle.
+
+Le panneau de régie reste la solution pour accepter une formulation voisine
+qui n'est pas reconnue automatiquement.
 """
-BANK_VERSION = "2026-11-24-v3"
+BANK_VERSION = "2026-11-24-v4"
 
 def board(question, source, rows):
-    if len(rows) != 6 or len({r[0].lower() for r in rows}) != 6:
-        raise ValueError("Chaque manche exige six réponses distinctes")
+    if len(rows) != 6:
+        raise ValueError("Six réponses exactement par manche")
+    if len(set(label.casefold() for label, _, _ in rows)) != 6:
+        raise ValueError("Les six réponses doivent être différentes")
     if any(len(label.split()) != 1 for label, _, _ in rows):
-        raise ValueError("Les réponses affichées doivent tenir en un mot")
-    if any(type(pts) is not int or not (1 <= pts <= 100) for _, pts, _ in rows):
-        raise ValueError("Chaque réponse doit avoir un pourcentage publié")
-    if any(rows[i][1] < rows[i + 1][1] for i in range(5)):
-        raise ValueError("Les scores doivent être triés")
-    return {"question": question, "source": source, "rows": rows}
+        raise ValueError("Réponses en un mot")
+    if any(type(points) is not int or not 1 <= points <= 100 for _,points,_ in rows):
+        raise ValueError("Les points doivent être des pourcentages")
+    if any(rows[i][1] < rows[i+1][1] for i in range(5)):
+        raise ValueError("Classement décroissant obligatoire")
+    return dict(question=question,source=source,rows=rows)
 
-snacking=("Speak Snacking · Strateg'eat · 2025 · ensemble des répondants",
-"https://www.snackshow.com/content/dam/sitebuilder/ref/sandwich-and-parizza/pdf/2025/Speak-Snacking-2025.pdf.coredownload.425688328.pdf")
-gastronomie=("Ipsos · Les Français et la gastronomie · 2025",
-"https://www.ipsos.com/sites/default/files/ct/news/documents/2025-03/ipsos-les-francais-et-la-gastronomie-rapport-complet.pdf")
-produits=("Ipsos · Les Français à table · août 1988",
-"https://www.ipsos.com/fr-fr/les-francais-table-pratiques-compor-tements-et-gouts")
-vacances_1990=("Ipsos · Les vacances · enquête de juin 1990",
-"https://www.ipsos.com/fr-fr/les-vacances-0")
-vacances_1996=("Ipsos · Les Français et leurs vacances · 1996",
-"https://www.ipsos.com/fr-fr/les-francais-et-leurs-vacances")
-pain=("Ifop / Confédération de la boulangerie · 2023 · total des citations",
-"https://boulangerie.org/wp-content/uploads/sites/2/2023/12/PJ-1-a-la-Circulaire-n%C2%B0100-Image-du-pain-et-de-la-boulangerie-aupres-des-Francais.pdf")
+lecture_2025 = (
+    "Ipsos / Centre national du livre · janvier 2025 · 1 001 personnes · p. 34, 48, 70",
+    "https://www.ipsos.com/sites/default/files/ct/news/documents/2025-04/ipsos-cnl-francais-lecture-2025-rapport-complet.pdf"
+)
+sorties_2024 = (
+    "Ipsos pour Maxi · janvier 2024 · femmes interrogées · p. 22",
+    "https://www.ipsos.com/sites/default/files/ct/news/documents/2024-02/Ipsos-Maxi-ce-que-veulent-vraiment-les-francaises-janvier-2024-web.pdf"
+)
+alimentation_1989 = (
+    "Ipsos · habitudes alimentaires · 1989 · 1 000 adultes",
+    "https://www.ipsos.com/fr-fr/les-habitudes-alimentaires-des-francais"
+)
+voisinage_2000 = (
+    "CSA pour Zurban · 2000 · 500 adultes parisiens · sous-total souvent/de temps en temps",
+    "https://www.ipsos.com/fr-fr/les-relations-de-voisinage"
+)
+dimanche_1999 = (
+    "Sofres pour Pèlerin · décembre 1999 · 1 000 adultes · sans les visites aux proches",
+    "https://www.ipsos.com/fr-fr/la-perception-de-la-journee-du-dimanche"
+)
+loisirs_1987 = (
+    "Ipsos · temps libre et loisirs · janvier 1987 · 300 foyers",
+    "https://www.ipsos.com/fr-fr/temps-libre-sport-et-loisirs"
+)
+jeunes_1990 = (
+    "Ipsos · goûts des jeunes · juillet 1990 · modes de transport, question 25",
+    "https://www.ipsos.com/fr-fr/les-gouts-des-jeunes"
+)
 
-six_boards=[
-    board("Quels plats salés les Français achètent-ils pour manger dehors ?",snacking,[
-        ("Pizza",46,"pizzas|une pizza"),
-        ("Burger",31,"hamburger|hamburgers|burgers"),
-        ("Sandwich",28,"sandwiches|sandwichs"),
-        ("Traditionnel",27,"plat traditionnel|cuisine traditionnelle|repas traditionnel"),
-        ("Kebab",24,"grec|kebabs"),
-        ("Salade",23,"salades|salade composee|salade composée"),
+six_boards = [
+    board("Quand on a du temps libre, que fait-on le plus souvent ?", lecture_2025, [
+        ("Musique", 91, "ecouter de la musique|écouter musique|chansons|chanson"),
+        ("Messages", 88, "appels|appel|telephone|téléphone|sms|whatsapp|messenger|discuter a distance|contacter des proches"),
+        ("Sorties", 81, "sortie|amis|sortir avec des amis|sortir"),
+        ("Internet", 80, "web|surfer sur internet|navigation internet|naviguer"),
+        ("Séries", 72, "serie|series|streaming|netflix|films|film|plateformes"),
+        ("Télévision", 70, "tele|télé|tv|televiseur|regarder la tele"),
     ]),
-    board("Quelles gourmandises les Français achètent-ils à l'extérieur ?",snacking,[
-        ("Chocolatine",33,"pain au chocolat|pains au chocolat|petit pain au chocolat|chocolatines"),
-        ("Croissant",31,"croissants"),
-        ("Crêpe",22,"crepe|crepes|crêpes"),
-        ("Cookie",21,"cookies"),
-        ("Fruit",21,"fruits|un fruit"),
-        ("Flan",21,"flan patissier|flans|flan pâtissier"),
+    board("Quelles cuisines du monde sont appréciées ?", alimentation_1989, [
+        ("Italienne", 66, "italien|italie|cuisine italienne"),
+        ("Marocaine", 51, "marocain|maroc|cuisine marocaine"),
+        ("Chinoise", 35, "chinois|chine|cuisine chinoise"),
+        ("Vietnamienne", 32, "vietnamien|vietnam|cuisine vietnamienne"),
+        ("Grecque", 20, "grec|grece|grèce|cuisine grecque"),
+        ("Indienne", 17, "indien|inde|cuisine indienne"),
     ]),
-    board("Quelles régions françaises sont réputées pour leur gastronomie ?",gastronomie,[
-        ("Sud-Ouest",41,"sud ouest|sud-ouest|sud ouest de la france"),
-        ("Lyonnais",33,"lyon|region lyonnaise|région lyonnaise|lyonnais"),
-        ("Bretagne",26,"breton|bretons"),
-        ("Alsace",25,"alsacien|alsacienne"),
-        ("Bourgogne",18,"bourguignon|bourguignonne"),
-        ("Provence",16,"provençal|provencal|provençale"),
+    board("Quels aliments ou boissons cherche-t-on parfois à limiter ?", alimentation_1989, [
+        ("Sauce", 44, "sauces|plats en sauce|plat en sauce"),
+        ("Vin", 43, "vins|alcool de raisin"),
+        ("Sucre", 42, "sucres|produits sucres|sucré"),
+        ("Conserves", 28, "conserve|boites de conserve|boîtes"),
+        ("Beurre", 28, "matiere grasse|beurres"),
+        ("Frites", 27, "frite|friture|pommes frites"),
     ]),
-    board("Où les Français cherchent-ils des avis sur les restaurants ?",gastronomie,[
-        ("Google",53,"google maps|maps|avis google"),
-        ("Tripadvisor",45,"trip advisor|trip-advisor"),
-        ("Entourage",42,"amis|famille|proches|bouche a oreille|bouche à oreille"),
-        ("Routard",14,"le routard|guide du routard"),
-        ("Michelin",14,"guide michelin|etoiles michelin|étoiles michelin"),
-        ("Influenceurs",8,"influenceur|instagrammeurs|influenceuse"),
+    board("Quelles choses fait-on parfois avec ses voisins ?", voisinage_2000, [
+        ("Discuter", 60, "parler|conversation|papoter|discuter sur le palier|bavarder"),
+        ("Dépanner", 27, "depanner|prêter|preter|emprunter|du sucre|echanger des produits"),
+        ("Arroser", 16, "arroser plantes|plantes|garder animaux|animaux|surveiller animaux"),
+        ("Apéro", 16, "apero|apéro|aperitif|apéritif|boire un verre"),
+        ("Dîner", 10, "diner|manger|repas|dejeuner chez les voisins"),
+        ("Enfants", 9, "garder les enfants|garde enfants|baby sitting|baby-sitting"),
     ]),
-    board("Quels produits alimentaires manqueraient aux Français ?",produits,[
-        ("Pain",66,"baguette|baguettes"),
-        ("Légumes",40,"legumes|legume|légume"),
-        ("Viande",28,"viande rouge|boeuf|bœuf|steak"),
-        ("Fromage",27,"fromages"),
-        ("Fruits",24,"fruit"),
-        ("Café",20,"cafe|coffee"),
+    board("Quelles sorties font le plus plaisir aux femmes interrogées ?", sorties_2024, [
+        ("Restaurant", 58, "resto|aller au restaurant|restaurant"),
+        ("Balade", 58, "promenade|se promener|marcher|promener|balades"),
+        ("Shopping", 31, "magasins|boutiques|courses en ville|faire les boutiques"),
+        ("Cinéma", 27, "cinema|cine|ciné|film en salle"),
+        ("Sport", 26, "sport en plein air|velo|vélo|randonnée|randonnee"),
+        ("Spectacle", 22, "theatre|théâtre|comedie musicale|comédie musicale|spectacles"),
     ]),
-    board("Quels mots font penser aux vacances d'été ?",vacances_1990,[
-        ("Détente",70,"detente|relaxation|se detendre|repos"),
-        ("Évasion",43,"evasion|s evader|voyager|voyage"),
-        ("Famille",39,"enfants|parents|avec la famille"),
-        ("Plage",27,"plages|bord de mer"),
-        ("Amis",26,"copains|potes|avec les amis"),
-        ("Chaleur",26,"chaud|il fait chaud|soleil"),
+    board("Qu'est-ce qui donne envie d'acheter un livre ?", lecture_2025, [
+        ("Proches", 87, "proche|ami|amis|recommandation|conseil d un ami|avis d un proche"),
+        ("Résumé", 85, "resume|quatrieme de couverture|4e de couverture|synopsis"),
+        ("Auteur", 84, "ecrivain|écrivain|auteur connu|auteur favori"),
+        ("Libraire", 64, "libraires|conseil du libraire|vendeur en librairie"),
+        ("Critique", 62, "journaliste|critique litteraire|presse|article de journal|radio"),
+        ("Titre", 59, "nom du livre|titre du livre"),
     ]),
-    board("Que font les Français pendant leurs vacances ?",vacances_1996,[
-        ("Promenade",54,"marcher|marche|randonnée|randonnee|promenades|balade|balades"),
-        ("Famille",50,"enfants|parents|moments en famille"),
-        ("Plage",48,"plages|aller a la plage"),
-        ("Visites",47,"visite|monuments|tourisme|visiter"),
-        ("Lecture",33,"lire|livre|livres"),
-        ("Repos",32,"se reposer|dormir|rien faire|farniente|paresser|detente"),
+    board("Quels types de livres lit-on ?", lecture_2025, [
+        ("Pratique", 52, "loisirs|livre pratique|livres pratiques|cuisine|bricolage|jardinage"),
+        ("Histoire", 46, "historique|livres d histoire|livre sur l histoire"),
+        ("BD", 43, "bande dessinee|bande dessinée|bandes dessinées|bd|album"),
+        ("Policier", 37, "polars|polar|enquete|enquête|espionnage|thriller"),
+        ("Art", 35, "beaux livres|photographie|livre d art|livre sur l art"),
+        ("Science", 35, "scientifique|sciences|technique|professionnel"),
     ]),
-    board("Quels types de pain les Français aiment-ils acheter ?",pain,[
-        ("Tradition",67,"baguette tradition|tradition|baguette de tradition"),
-        ("Baguette",50,"baguettes|baguette classique|baguette ordinaire"),
-        ("Céréales",41,"cereales|pain aux cereales|pain complet|complet|seigle"),
-        ("Campagne",24,"pain de campagne|campagnard"),
-        ("Spéciaux",13,"speciaux|pain special|pain aux noix|pain aux fruits|pain aux lardons"),
-        ("Mie",5,"pain de mie|mie de pain"),
+    board("Quels moyens de transport les jeunes citaient-ils en 1990 ?", jeunes_1990, [
+        ("Voiture", 49, "auto|automobile|en voiture"),
+        ("Moto", 8, "motocyclette|motocycle"),
+        ("Bus", 8, "autobus|en bus"),
+        ("Train", 6, "sncf|tgv|en train"),
+        ("Mobylette", 6, "cyclomoteur|mob|50cc"),
+        ("Métro", 5, "metro|en metro|subway"),
     ]),
-    board("Que font souvent les Français le dimanche ?", 
-          ("Sofres pour Pèlerin Magazine · décembre 1999", "https://www.ipsos.com/fr-fr/la-perception-de-la-journee-du-dimanche"), [
-        ("Famille",66,"amis|famille amis|proches|voir famille|voir amis"),
-        ("Promenade",55,"se promener|marcher|balade|balader"),
-        ("Télévision",43,"tele|tv|regarder television"),
-        ("Cuisine",38,"cuisiner|restaurant|manger|repas"),
-        ("Jardinage",36,"jardiner|bricoler|bricolage"),
-        ("Lecture",36,"lire|livre|livres|musique|écouter musique"),
+    board("Le dimanche, que fait-on à part rendre visite à des proches ?", dimanche_1999, [
+        ("Promenade", 55, "balade|se promener|marcher|sortir marcher"),
+        ("Télévision", 43, "tele|télé|tv|regarder la tele"),
+        ("Cuisine", 38, "cuisiner|manger|restaurant|preparer un repas"),
+        ("Jardinage", 36, "jardiner|jardin|bricoler|bricolage"),
+        ("Lecture", 36, "lire|livres|musique|ecouter de la musique"),
+        ("Flâner", 35, "flaner|rester chez soi|trainer a la maison|traîner|ne rien faire"),
     ]),
-    board("Quelles corvées les Français disent-ils bien faire à la maison ?",
-          ("Ipsos · tâches domestiques · hommes en couple · mars 2005", "https://www.ipsos.com/fr-fr/enquete-sur-la-repartition-des-taches-domestiques"), [
-        ("Cuisine",17,"repas|cuisiner|préparer repas"),
-        ("Vaisselle",9,"laver vaisselle|lave vaisselle"),
-        ("Aspirateur",9,"passer aspirateur|aspirer"),
-        ("Papiers",6,"administration|administratif|administratifs"),
-        ("Poubelles",5,"poubelle|sortir poubelles|descendre poubelles"),
-        ("Bricolage",4,"bricoler|travaux|reparation|réparations"),
+    board("Avec plus de temps libre, que voudrait-on faire ?", loisirs_1987, [
+        ("Voyager", 42, "voyage|vacances|partir en voyage"),
+        ("Sport", 21, "faire du sport|exercice|sportif"),
+        ("Culture", 18, "se cultiver|apprendre|culture generale|lire pour apprendre"),
+        ("Art", 12, "artistique|peinture|dessin|musique artistique"),
+        ("Artisanat", 5, "manuel|travail manuel|artisan|atelier"),
+        ("Technologie", 3, "technologies|informatique|technique nouvelle|nouvelles technologies"),
     ]),
 ]
-boards=six_boards
+boards = six_boards
