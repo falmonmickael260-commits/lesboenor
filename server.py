@@ -13,7 +13,7 @@ db = directory/"plateau.sqlite3"
 secret = os.environ.get("HOST_KEY", "")
 if len(secret) < 12:
     raise SystemExit("Définissez HOST_KEY avec au moins 12 caractères.")
-ROUNDS = 10
+ROUNDS = 14
 TEAM_FORMATS = (0, 6, 7, 8)  # 0 = équipes libres (1 à 30 joueurs)
 
 def deal(deck, remaining):
@@ -65,7 +65,7 @@ with sqlite3.connect(db) as c:
         c.execute("UPDATE game SET body=?,rev=rev+1 WHERE id=1",(json.dumps(old),))
 
     # Une ancienne partie peut référencer l'ancien catalogue américain.
-    # Réinitialiser la manche si ces indices n'existent plus dans les 8 enquêtes françaises.
+    # Réinitialiser la manche si ces indices n'existent plus dans les enquêtes disponibles.
     if "deck" in old and (
         not isinstance(old["deck"],list) or
         any(type(i) is not int or i < 0 or i >= len(six_boards) for i in old["deck"])
@@ -126,7 +126,11 @@ final_questions = [
      "https://docs.cdn.yougov.com/fdemdtp8no/Pizza_poll_results.pdf",
      [("Pepperoni",24,"peperoni"),("Saucisse",13,"saucisses|chair a saucisse"),
       ("Supplément fromage",11,"double fromage|extra fromage|fromage supplementaire|extra cheese"),
-      ("Champignons",9,"champignon"),("Poulet",6,"chicken")])]
+      ("Champignons",9,"champignon"),("Poulet",6,"chicken")]),
+    ("Quelle marque de glace les Français citaient-ils parmi leurs favorites en 2021 ?",
+     "https://yougov.com/fr-fr/articles/37025-les-francais-et-les-glaces",
+     [("Häagen-Dazs",24,"haagen dazs|haagen-dazs|hagen daz"),
+      ("Magnum",18,"magnums"),("Carte d'Or",14,"carte dor|carte d or")])]
 goal = 100
 
 def final_action(s,a):
