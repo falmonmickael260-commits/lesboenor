@@ -109,6 +109,18 @@ function render(s){
     if(v){const pts=document.createElement("strong");pts.textContent=v.pts;el.append(pts)}
     return el;
   }));
+  // Les réponses ne s'affichent en clair que dans le panneau animateur.
+  $("answerPanel").hidden=!["buzz","play","steal","review"].includes(s.phase);
+  $("answerChoices").replaceChildren(...(s.panelChoices||[]).map(choice=>{
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className="answerChoice"+(choice.found?" answered":"");
+    btn.disabled=choice.found||!["buzz","play","steal","review"].includes(s.phase);
+    btn.textContent=(choice.index+1)+". "+choice.label+"  ·  "+choice.pts+" points"+(choice.found?"  ✓":"");
+    btn.setAttribute("aria-label","Valider "+choice.label);
+    btn.onclick=()=>sync({op:"pick",index:choice.index});
+    return btn;
+  }));
   $("instruction").textContent=(s.phase==="end"?"Classement final · ":"")+s.found.length+" / "+s.slots.length+" réponses trouvées";
   $("strikes").textContent="Erreurs "+("✕ ".repeat(s.errors))+("○ ".repeat(3-s.errors));
   for(const [id,on] of Object.entries({start:s.phase==="start",entry:["buzz","play","steal"].includes(s.phase),review:s.phase==="review",next:s.phase==="end"}))$(id).hidden=!on;
