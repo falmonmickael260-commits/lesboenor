@@ -74,3 +74,13 @@ main{max-width:1280px;width:100%;padding-inline:clamp(14px,3vw,44px)}
 #board .slot span{letter-spacing:.015em}
 #board .slot strong{font-size:clamp(25px,3vw,39px)}
 @media(max-width:700px){#board{padding:8px;gap:9px}#board .slot{min-height:68px;font-size:clamp(21px,5.7vw,29px)}}
+
+/* Panneau de réponses privé, rapide à utiliser en animation */
+.answerPanel{margin:18px 0;padding:16px;border:2px solid #c69a50;background:#0b1d39}
+.answerPanel summary{font-size:clamp(18px,2.1vw,25px);font-weight:900;color:#ffe0a0}
+.answerPanel p{font-size:15px;color:#e2eaf8}
+.answerChoices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.answerChoice{text-align:left;min-height:65px;padding:14px 18px;border:1px solid #adc5ed;color:#fff;background:#224675;font-size:clamp(17px,1.7vw,23px);font-weight:800;overflow-wrap:break-word}
+.answerChoice:hover:not(:disabled){background:#306ab1}
+.answerChoice.answered{background:#253a37;border-color:#4c9474;color:#b8dbc9;opacity:.68}
+@media(max-width:650px){.answerChoices{grid-template-columns:1fr}.answerChoice{min-height:58px}}
