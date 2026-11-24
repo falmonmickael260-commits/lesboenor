@@ -261,7 +261,7 @@ function bootFinal(){
 function renderFinal(s){
   const f=s.final, playing=s.phase==="private", done=s.phase==="verdict", group=teams[f.team]||"";
   $("finalTitle").textContent=done?(f.total>=f.goal?"Finale gagnée par les "+group+" !":"Finale perdue par les "+group):"Finale "+(group?"des "+group:"à départager");
-  $("finalGuide").textContent=done?f.total+" points sur un objectif de "+f.goal:"Chacun contacte un joueur de l’équipe qualifiée par message privé et ouvre une fiche différente. Posez les trois mêmes questions. Objectif : 100 points à deux. Une réponse identique compte une seule fois.";
+  $("finalGuide").textContent=done?f.total+" points sur un objectif de "+f.goal:"Chacun contacte un joueur de l’équipe qualifiée par message privé et ouvre une fiche différente. Posez les quatre mêmes questions. Objectif : 100 points à deux. Une réponse identique compte une seule fois.";
   $("tie").hidden=s.phase!=="qualify";$("privatePanel").hidden=!playing;$("restart").hidden=!done;
   $("results").replaceChildren();
   if(done){for(const row of f.rows){
