@@ -1,4 +1,4 @@
-"""10 manches variées pour l'édition du 24 novembre 2026.
+"""14 manches variées pour l'édition du 24 novembre 2026.
 Chaque réponse provient d'un tableau de sondage réellement publié et conserve
 son pourcentage d'origine. La formulation affichée tient en un seul mot.
 Certaines études sont anciennes : l'année et le public interrogé sont indiqués
@@ -7,7 +7,7 @@ dans la source. Le classement n'est PAS présenté comme une tendance actuelle.
 Le panneau de régie reste la solution pour accepter une formulation voisine
 qui n'est pas reconnue automatiquement.
 """
-BANK_VERSION = "2026-11-24-v4"
+BANK_VERSION = "2026-11-24-v5"
 
 def board(question, source, rows):
     if len(rows) != 6:
@@ -132,5 +132,54 @@ six_boards = [
         ("Artisanat", 5, "manuel|travail manuel|artisan|atelier"),
         ("Technologie", 3, "technologies|informatique|technique nouvelle|nouvelles technologies"),
     ]),
+    # Ipsos, octobre 1989 : préférences de destination pour les vacances d'été
+    # Question 2, classement des citations, choix multiple.
+    board("Dans quels endroits rêvait-on de passer ses vacances d'été en 1989 ?",
+          ("Ipsos · octobre 1989 · destinations estivales, Q2, total des citations",
+           "https://www.ipsos.com/fr-fr/les-vacances-dete-et-dhiver"), [
+        ("États-Unis", 26, "etats unis|etats-unis|usa|amerique|amérique"),
+        ("Grèce", 24, "grece|grecque|grêce"),
+        ("France", 22, "francais|française"),
+        ("Italie", 18, "italien|italienne"),
+        ("Espagne", 16, "espagnol|espagnole"),
+        ("Antilles", 12, "antille|caraibes|caraïbes"),
+    ]),
+    # Ipsos, avril 1987 : raisons pour lesquelles on va voir un film
+    # Question 5, six premières réponses citées.
+    board("Qu'est-ce qui donne envie d'aller voir un film au cinéma ?",
+          ("Ipsos · avril 1987 · raisons de voir un film, Q5",
+           "https://www.ipsos.com/fr-fr/le-cinema-pourquoi-y-va-t"), [
+        ("Histoire", 69, "sujet|scenario|scénario|synopsis|intrigue|histoire du film"),
+        ("Acteurs", 45, "acteur|actrice|vedettes|star|stars|casting"),
+        ("Amis", 37, "ami|proches|bouche a oreille|conseil|conversation"),
+        ("Télévision", 28, "tv|tele|télé|emission tv|émission télé|emissions tele"),
+        ("Critiques", 23, "critique|presse|journaux|avis des critiques"),
+        ("Récompenses", 17, "recompenses|recompense|prix|oscar|césar|cesar|palmares|palmarès"),
+    ]),
+    # Ipsos, octobre 1986 : instruments pratiqués par les jeunes interrogés,
+    # parmi ceux qui déclaraient jouer d'un instrument, Q11.
+    board("Quels instruments jouaient les jeunes interrogés ?",
+          ("Ipsos · octobre 1986 · musiciens parmi les jeunes interrogés, Q11",
+           "https://www.ipsos.com/fr-fr/musique-ce-que-les-jeunes-ecoutent-et-pratiquent"), [
+        ("Piano", 30, "pianoforte|clavier"),
+        ("Flûte", 27, "flute|flute a bec|flûte traversière"),
+        ("Guitare", 13, "guitares|basse|guitare basse"),
+        ("Synthétiseur", 6, "synthetiseur|synthé|synthe|synthesizer"),
+        ("Violon", 5, "violons"),
+        ("Saxophone", 3, "saxo|saxophones"),
+    ]),
+    # Ipsos, nov. 1990 : inventions et évolutions techniques jugées
+    # importantes sur les vingt années précédentes, Q3.
+    board("En 1990, quelles innovations techniques étaient jugées importantes ?",
+          ("Ipsos · novembre 1990 · inventions et technologies, Q3",
+           "https://www.ipsos.com/fr-fr/les-evenements-les-plus-importants-des-20-dernieres-annees"), [
+        ("Ordinateur", 64, "pc|ordinateur personnel|micro ordinateur|micro-ordinateur|ordinateur de bureau"),
+        ("Minitel", 43, "3615|minitels"),
+        ("Téléphone", 41, "telephone|telephones|tel|téléphones"),
+        ("Micro-ondes", 35, "micro ondes|microonde|four micro ondes|four micro-ondes"),
+        ("Calculatrice", 27, "calculette|calculatrice de poche|calculatrices"),
+        ("Magnétoscope", 27, "magnetoscope|vhs|video|vidéo"),
+    ]),
+
 ]
 boards = six_boards
