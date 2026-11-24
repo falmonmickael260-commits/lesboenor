@@ -3,7 +3,7 @@ Six TOP réponses courtes, score = pourcentage explicitement publié dans l'enqu
 Des réponses formulées plus simplement à l'oral restent acceptées via les alias.
 Les questions anciennes ne sont pas réutilisées dans ce catalogue.
 """
-BANK_VERSION = "2026-11-24-v2"
+BANK_VERSION = "2026-11-24-v3"
 
 def board(question, source, rows):
     if len(rows) != 6 or len({r[0].lower() for r in rows}) != 6:
@@ -93,6 +93,24 @@ six_boards=[
         ("Campagne",24,"pain de campagne|campagnard"),
         ("Spéciaux",13,"speciaux|pain special|pain aux noix|pain aux fruits|pain aux lardons"),
         ("Mie",5,"pain de mie|mie de pain"),
+    ]),
+    board("Que font souvent les Français le dimanche ?", 
+          ("Sofres pour Pèlerin Magazine · décembre 1999", "https://www.ipsos.com/fr-fr/la-perception-de-la-journee-du-dimanche"), [
+        ("Famille",66,"amis|famille amis|proches|voir famille|voir amis"),
+        ("Promenade",55,"se promener|marcher|balade|balader"),
+        ("Télévision",43,"tele|tv|regarder television"),
+        ("Cuisine",38,"cuisiner|restaurant|manger|repas"),
+        ("Jardinage",36,"jardiner|bricoler|bricolage"),
+        ("Lecture",36,"lire|livre|livres|musique|écouter musique"),
+    ]),
+    board("Quelles corvées les Français disent-ils bien faire à la maison ?",
+          ("Ipsos · tâches domestiques · hommes en couple · mars 2005", "https://www.ipsos.com/fr-fr/enquete-sur-la-repartition-des-taches-domestiques"), [
+        ("Cuisine",17,"repas|cuisiner|préparer repas"),
+        ("Vaisselle",9,"laver vaisselle|lave vaisselle"),
+        ("Aspirateur",9,"passer aspirateur|aspirer"),
+        ("Papiers",6,"administration|administratif|administratifs"),
+        ("Poubelles",5,"poubelle|sortir poubelles|descendre poubelles"),
+        ("Bricolage",4,"bricoler|travaux|reparation|réparations"),
     ]),
 ]
 boards=six_boards
