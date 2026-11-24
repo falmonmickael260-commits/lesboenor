@@ -4,7 +4,7 @@ import hmac, json, os, re, sqlite3, unicodedata
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
-from questions import boards, six_boards
+from questions import boards, six_boards, BANK_VERSION
 
 ROOT = Path(__file__).resolve().parent
 directory = Path(os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.getenv("DATA_DIR", ROOT/"data"))
@@ -13,7 +13,7 @@ db = directory/"plateau.sqlite3"
 secret = os.environ.get("HOST_KEY", "")
 if len(secret) < 12:
     raise SystemExit("Définissez HOST_KEY avec au moins 12 caractères.")
-ROUNDS = 8
+ROUNDS = 10
 TEAM_FORMATS = (0, 6, 7, 8)  # 0 = équipes libres (1 à 30 joueurs)
 
 def deal(deck, remaining):
@@ -31,7 +31,7 @@ def deal(deck, remaining):
 
 def fresh(remaining=None):
     deck,pool=deal([],remaining or [])
-    return dict(deck=deck,remaining=pool,i=0,team=None,phase="start",found=[],pot=0,errors=0,scores=[0,0],history=[],teamSize=0,msg="Choisissez l’équipe qui prend la main.")
+    return dict(bankVersion=BANK_VERSION,deck=deck,remaining=pool,i=0,team=None,phase="start",found=[],pot=0,errors=0,scores=[0,0],history=[],teamSize=0,msg="Choisissez l’équipe qui prend la main.")
 def draw_duel(s, keep=False):
     groups=s.get("rosters",[[],[]])
     history=s.setdefault("called",[[],[]])
@@ -55,6 +55,15 @@ with sqlite3.connect(db) as c:
     c.execute("INSERT OR IGNORE INTO game VALUES(1,0,?)",(json.dumps(fresh()),))
     rev,body=c.execute("SELECT rev,body FROM game WHERE id=1").fetchone()
     old=json.loads(body)
+    if old.get("bankVersion") != BANK_VERSION:
+        roster=old.get("rosters",[[],[]])
+        captain=old.get("captains",[None,None])
+        size=old.get("teamSize",0)
+        old={**fresh(), "bankVersion":BANK_VERSION,
+             "rosters":roster, "captains":captain, "teamSize":size, "called":[[],[]]}
+        draw_duel(old)
+        c.execute("UPDATE game SET body=?,rev=rev+1 WHERE id=1",(json.dumps(old),))
+
     # Une ancienne partie peut référencer l'ancien catalogue américain.
     # Réinitialiser la manche si ces indices n'existent plus dans les 8 enquêtes françaises.
     if "deck" in old and (
@@ -196,7 +205,7 @@ def public(s,rev):
     for i,(label,pts,_) in enumerate(q["rows"]):
         rank=1+sum(p>pts for _,p,_ in q["rows"])
         slots.append(dict(rank=rank,label=label,pts=pts) if i in s["found"] or s["phase"]=="end" else None)
-    return {**s,"rosters":rosters,"duel":duel,"slots":slots,"question":q["question"],"source":q["source"] if s["phase"]=="end" else [q["source"][0]],"rev":rev,"total":round_count}
+    return {**s,"panelChoices":[{"index":i,"label":v[0],"pts":v[1],"found":i in s["found"]} for i,v in enumerate(q["rows"])],"rosters":rosters,"duel":duel,"slots":slots,"question":q["question"],"source":q["source"] if s["phase"]=="end" else [q["source"][0]],"rev":rev,"total":round_count}
 def finish(s,winner,stolen):
     s["scores"][winner]+=s["pot"]
     outcome=("Vol réussi" if stolen else "Manche remportée")+f' · {teams[winner]} +{s["pot"]} points'
@@ -248,6 +257,12 @@ def act(s,a):
             return s
         s.update(i=s["i"]+1,team=None,phase="start",found=[],pot=0,errors=0,msg="Choisissez l’équipe qui prend la main.")
         draw_duel(s)
+    elif op=="pick" and phase=="review":
+        index=a.get("index")
+        rows=current_board(s)["rows"]
+        if type(index) is not int or index not in range(len(rows)): raise ValueError()
+        s["phase"]=s.pop("previous")
+        return act(s,{"op":"pick","index":index})
     elif op=="retry" and phase=="review":
         s.update(phase=s.pop("previous"),msg="Demandez une précision, puis reformulez la réponse.")
     elif op=="miss" and phase=="review":
@@ -262,12 +277,18 @@ def act(s,a):
             s["errors"]+=1
             steal=s["errors"]==3
             s.update(phase="steal" if steal else "play",msg=("Tentative de vol des "+teams[1-s["team"]] if steal else "Hors du tableau · une erreur."))
-    elif op=="answer" and phase in ("buzz","play","steal"):
-        raw=a.get("value","")
-        if not isinstance(raw,str) or not 0<len(raw.strip())<=180: raise ValueError()
-        v=norm(raw)
+    elif op in ("answer","pick") and phase in ("buzz","play","steal"):
         rows=current_board(s)["rows"]
-        matches=[i for i,(label,_,alts) in enumerate(rows) if any(close(v,norm(t)) for t in [label,*alts.split("|")])]
+        if op=="pick":
+            index=a.get("index")
+            if type(index) is not int or index not in range(len(rows)): raise ValueError()
+            raw=rows[index][0]
+            matches=[index]
+        else:
+            raw=a.get("value","")
+            if not isinstance(raw,str) or not 0<len(raw.strip())<=180: raise ValueError()
+            v=norm(raw)
+            matches=[i for i,(label,_,alts) in enumerate(rows) if any(close(v,norm(t)) for t in [label,*alts.split("|")])]
         if len(matches)!=1:
             s.update(previous=phase,phase="review",msg=f'« {raw.strip()} » · Aucune correspondance certaine. Précisez ou comptez une erreur.')
         elif matches[0] in s["found"]:
